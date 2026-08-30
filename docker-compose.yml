@@ -1,0 +1,66 @@
+# docker-compose.yml (orquestrador)
+#
+# Plataforma de inferência local. Ponto de entrada único: LiteLLM em :4000/v1.
+# Backends especializados vivem em services/<nome>/compose.yaml e são
+# agregados aqui via `include`.
+#
+# PROFILES:
+#   core  -> gateway + ollama + whisper   (chat + visão + áudio)
+#   image -> images (LocalAI, geração de imagem)
+#   perf  -> vllm   (alta vazão / guided JSON, opcional)
+#
+# Exemplos:
+#   docker compose --profile core up -d
+#   docker compose --profile core --profile image up -d
+#   docker compose --profile perf up -d
+
+include:
+  - services/ollama/compose.yaml
+  - services/whisper/compose.yaml
+  - services/images/compose.yaml
+  - services/vllm/compose.yaml
+
+services:
+  # Gateway único (LiteLLM). Roteia nomes lógicos -> backends.
+  gateway:
+    image: ghcr.io/berriai/litellm:main-latest
+    container_name: localai-gateway
+    restart: unless-stopped
+    profiles: ["core"]
+    ports:
+      - "${GATEWAY_PORT:-4000}:4000"
+    command: ["--config", "/app/config.yaml", "--port", "4000"]
+    environment:
+      # Master key: administra o gateway e cria virtual keys por projeto.
+      LITELLM_MASTER_KEY: "${LITELLM_MASTER_KEY:?defina LITELLM_MASTER_KEY no .env}"
+      # Salt usado para criptografar credenciais no banco (se DATABASE_URL for usado).
+      LITELLM_SALT_KEY: "${LITELLM_SALT_KEY:?defina LITELLM_SALT_KEY no .env}"
+      # Opcional: persistência de keys/logs. Se ausente, keys ficam em memória.
+      DATABASE_URL: "${DATABASE_URL:-}"
+    volumes:
+      # Config principal do LiteLLM (model_list, keys, limites).
+      - ./config/gateway/config.yaml:/app/config.yaml:ro
+      # Catálogo montado como referência/documentação (somente leitura).
+      - ./config/models:/catalog:ro
+    depends_on:
+      # Sobe após os backends do perfil core. (image/perf são independentes.)
+      ollama:
+        condition: service_started
+      whisper:
+        condition: service_started
+    networks:
+      - localai_net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:4000/health/liveliness >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+# Rede compartilhada. É `external` para que consumidores em Docker
+# (outros compose) possam se conectar pelo nome de serviço.
+# Crie uma vez com: docker network create localai_net
+networks:
+  localai_net:
+    external: true
+    name: localai_net

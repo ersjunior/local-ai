@@ -1,0 +1,18 @@
+# CATÁLOGO — fonte de verdade / documentação de um modelo.
+# Ao adicionar um arquivo aqui, adicione TAMBÉM a rota em
+# config/gateway/config.yaml (model_list). O scripts/add-model.sh ajuda.
+
+logical_name: chat-gpt-oss
+backend: ollama
+model_id: gpt-oss:20b
+alias: ""                      # sem alias; rota usa o model_id direto
+params:
+  temperature: 0.7
+  num_ctx: 8192
+  size: "20B"
+vram_estimate: "~13 GB (Q4) — folgado no 4090"
+license: "Apache-2.0 (uso comercial livre)"
+notes: >
+  Alternativa Apache-2.0, licença permissiva. Bom para cargas onde a licença
+  precisa ser 100% livre. Menor que o Qwen3-32B.
+enabled: true

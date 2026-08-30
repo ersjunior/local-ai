@@ -1,0 +1,65 @@
+# services/images/compose.yaml
+#
+# Backend de imagem -> LocalAI (Diffusers, CUDA).
+# Expõe /v1/images/generations (OpenAI-compatível).
+#
+# CATÁLOGO vs DEFINIÇÃO REAL (importante):
+#   - config/models/  = CATÁLOGO (documentação). Montado em /catalog:ro. NÃO é
+#     lido pelo LocalAI como modelo — serve só de fonte de verdade/docs.
+#   - config/localai/ = DEFINIÇÃO REAL servida pelo LocalAI. Montado em /models
+#     (leitura/escrita). Contém os .yaml (qwen-image, flux-schnell) que o
+#     LocalAI carrega de fato; os PESOS baixados também caem aqui (ignorados
+#     pelo git — ver .gitignore).
+#
+# NOTA (edição de imagem / img2img):
+#   images.edit (img2img) pode NÃO existir nesta API. Projetos consumidores
+#   devem cair para images.generate (text2img). Para edição fiel, usar ComfyUI.
+#   TODO: adicionar um serviço services/comfyui/compose.yaml para img2img fiel.
+#
+# Orçamento de VRAM (single 4090): a imagem só deve carregar sob demanda.
+# Mantenha o LLM (Ollama) descarregado antes de gerar imagem (keep_alive curto).
+services:
+  images:
+    image: localai/localai:latest-gpu-nvidia-cuda-12
+    container_name: localai-images
+    restart: unless-stopped
+    # Perfil image: só sobe com `make up-all`. Sem profile, subiria SEMPRE (VRAM!).
+    profiles: ["image"]
+    # Porta no host: 18002 -> 8080 no container (rota direta opcional).
+    ports:
+      - "${IMAGES_PORT:-18002}:8080"
+    environment:
+      # Diretório de modelos dentro do container.
+      MODELS_PATH: "/models"
+      # Threads e opções podem ser ajustadas conforme o modelo.
+      DEBUG: "${LOCALAI_DEBUG:-false}"
+      # Token HF para modelos gated (ex.: FLUX.1-schnell). Vazio = só modelos abertos.
+      HF_TOKEN: "${HUGGING_FACE_HUB_TOKEN:-}"
+    volumes:
+      # DEFINIÇÃO REAL (bind mount rw): .yaml carregados pelo LocalAI + pesos baixados.
+      # Versionado no git (só os .yaml; pesos ignorados via .gitignore).
+      - ../../config/localai:/models
+      # Monta o catálogo apenas como REFERÊNCIA/documentação (somente leitura).
+      - ../../config/models:/catalog:ro
+    networks:
+      - localai_net
+    healthcheck:
+      # LocalAI expõe /readyz quando pronto.
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/readyz >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+# /models agora é um bind mount (config/localai) — sem volume nomeado aqui.
+networks:
+  localai_net:
+    external: true
+    name: localai_net

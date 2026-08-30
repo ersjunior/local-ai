@@ -1,0 +1,7 @@
+# Modelfile do alias lógico "cutcast-cuts" (chat-cuts).
+# Aplica os parâmetros do catálogo config/models/chat-qwen3-32b.yaml.
+# Regerar o alias: ollama create cutcast-cuts -f /modelfiles/cutcast-cuts.Modelfile
+FROM qwen3:32b
+
+PARAMETER temperature 0.6
+PARAMETER num_ctx 8192

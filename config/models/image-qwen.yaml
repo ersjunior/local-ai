@@ -1,0 +1,23 @@
+# CATÁLOGO — fonte de verdade / documentação de um modelo.
+# A definição REAL servida pelo LocalAI está em config/localai/qwen-image.yaml.
+# Ao adicionar um arquivo aqui, adicione TAMBÉM a rota em
+# config/gateway/config.yaml (model_list). O scripts/add-model.sh ajuda.
+
+logical_name: image-thumbs           # ALTERNATIVA ao padrão (flux-schnell)
+backend: localai
+model_id: qwen-image
+alias: ""
+params:
+  size: "1024x1024"
+  steps: 20
+vram_estimate: "~12-18 GB durante geração (~20B) — pesado/arriscado em f16 no 4090"
+license: "Qwen-Image (uso comercial permitido, com restrições — verificar LICENSE)"
+notes: >
+  ALTERNATIVA (não é o padrão). Melhor para TEXTO renderizado pelo modelo, mas
+  ~20B e pesado no single 4090 — o padrão é image-flux-schnell.yaml. Para ativar,
+  troque a rota image-thumbs no gateway para openai/qwen-image.
+  Geração via /v1/images/generations (text2img). img2img (edição) pode não existir
+  na API do LocalAI — cair para generate ou usar ComfyUI.
+  NUNCA manter quente junto com o LLM na 4090 (orçamento de VRAM).
+  Modelos NÃO-comerciais conhecidos (NÃO usar por padrão): FLUX.1-dev, FLUX.2-dev.
+enabled: false                       # padrão ativo é o flux-schnell

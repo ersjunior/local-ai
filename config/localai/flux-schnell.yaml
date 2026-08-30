@@ -1,0 +1,34 @@
+# DEFINIÇÃO REAL de modelo do LocalAI (backend diffusers) — servida em /models.
+# NÃO confundir com config/models/ (catálogo/documentação, montado em /catalog:ro).
+#
+# PADRÃO DO PROJETO para image-thumbs. Motivo: o consumidor (ex.: CutCast)
+# desenha o texto do título por cima da imagem (bake via PIL), então a
+# renderização de texto pelo modelo não é necessária aqui. FLUX.1-schnell (12B,
+# distilado, Apache-2.0) CABE no 24GB do RTX 4090 e é rápido/confiável — ao
+# contrário do Qwen-Image (~20B), pesado/arriscado em f16 no single-GPU.
+# Config conferida no PR de suporte a FLUX do LocalAI (mudler/LocalAI#3129):
+# pipeline_type FluxPipeline, cfg_scale 0, step 4.
+#
+# ATENÇÃO: o repositório HF black-forest-labs/FLUX.1-schnell é GATED — aceite os
+# termos no HuggingFace e exporte HUGGING_FACE_HUB_TOKEN/HF_TOKEN para o container
+# baixar os pesos. A LICENÇA dos pesos continua Apache-2.0.
+name: flux-schnell
+backend: diffusers
+
+f16: true
+cuda: true
+# Reduz o uso de VRAM (offload) — útil no orçamento single-4090.
+low_vram: true
+
+# schnell é distilado: 4 passos bastam.
+step: 4
+
+parameters:
+  model: black-forest-labs/FLUX.1-schnell
+
+diffusers:
+  cuda: true
+  pipeline_type: FluxPipeline
+  # FLUX schnell não usa guidance (cfg_scale 0).
+  cfg_scale: 0
+  enable_parameters: "num_inference_steps"

@@ -1,0 +1,57 @@
+# services/vllm/compose.yaml
+#
+# Backend de PERFORMANCE (opcional) -> vLLM (OpenAI-compatível).
+# Perfil: perf. Alta vazão + guided JSON (outlines) para saída estruturada.
+#
+# QUANDO USAR:
+#   - Você tem GPU dedicada (ou vai rodar SÓ texto neste 4090).
+#   - Precisa de throughput alto e/ou JSON garantido.
+#
+# ATENÇÃO (single 4090): vLLM tende a reservar quase toda a VRAM
+# (--gpu-memory-utilization 0.9) e NÃO co-reside bem com o backend de imagem
+# no mesmo GPU. Use este perfil isoladamente. Ver docs/architecture.md.
+services:
+  vllm:
+    image: vllm/vllm-openai:latest
+    container_name: localai-vllm
+    restart: unless-stopped
+    profiles: ["perf"]
+    # Porta no host: 18000 -> 8000 no container.
+    ports:
+      - "${VLLM_PORT:-18000}:8000"
+    command:
+      - "--model"
+      - "${VLLM_MODEL:-Qwen/Qwen3-8B}"
+      - "--gpu-memory-utilization"
+      - "0.9"
+      - "--max-model-len"
+      - "${VLLM_MAX_MODEL_LEN:-8192}"
+    environment:
+      HUGGING_FACE_HUB_TOKEN: "${HUGGING_FACE_HUB_TOKEN:-}"
+    volumes:
+      # Cache do HuggingFace (compartilhado; usa RAM/disco como cache quente).
+      - hf_cache:/root/.cache/huggingface
+    networks:
+      - localai_net
+    ipc: host
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/health >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+volumes:
+  hf_cache:
+
+networks:
+  localai_net:
+    external: true
+    name: localai_net

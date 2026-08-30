@@ -1,0 +1,18 @@
+# CATÁLOGO — fonte de verdade / documentação de um modelo.
+# Ao adicionar um arquivo aqui, adicione TAMBÉM a rota em
+# config/gateway/config.yaml (model_list). O scripts/add-model.sh ajuda.
+
+logical_name: whisper
+backend: whisper
+model_id: large-v3
+alias: ""
+params:
+  language: "auto"
+  response_format: "verbose_json"   # traz timestamps por segmento
+  timestamps: true
+vram_estimate: "~4-5 GB (faster-whisper large-v3, fp16)"
+license: "MIT (OpenAI Whisper large-v3)"
+notes: >
+  Transcrição com timestamps via /v1/audio/transcriptions. Se a versão do
+  LiteLLM não proxyar áudio, use a rota direta http://HOST:18001.
+enabled: true

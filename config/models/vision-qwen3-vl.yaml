@@ -1,0 +1,18 @@
+# CATÁLOGO — fonte de verdade / documentação de um modelo.
+# Ao adicionar um arquivo aqui, adicione TAMBÉM a rota em
+# config/gateway/config.yaml (model_list). O scripts/add-model.sh ajuda.
+
+logical_name: vision-default
+backend: ollama
+model_id: qwen3-vl:7b
+alias: cutcast-vision
+params:
+  temperature: 0.2
+  num_ctx: 8192
+  size: "7B"
+vram_estimate: "~7 GB — folgado no 4090"
+license: "Qwen (uso comercial permitido, com restrições — verificar Qwen LICENSE)"
+notes: >
+  VLM (visão) padrão. Recebe image_url no formato OpenAI chat. Usado para
+  análise de frames/thumbnails.
+enabled: true

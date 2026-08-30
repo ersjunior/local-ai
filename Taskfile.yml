@@ -1,0 +1,106 @@
+# Taskfile.yml — runner cross-platform (go-task) com paridade 1:1 ao Makefile.
+#
+# Instalar go-task:
+#   Windows: winget install Task.Task | choco install go-task | scoop install task
+#   Linux/macOS: brew install go-task  (ou script oficial em taskfile.dev)
+#
+# Uso: task up | task pull | task smoke | task --list
+#
+# No Windows NATIVO os passos que hoje são bash (.sh) são roteados para os
+# gêmeos PowerShell (.ps1) via `platforms:`. No WSL2/Linux/macOS usa os .sh.
+version: '3'
+
+# Carrega .env (LITELLM_MASTER_KEY, GATEWAY_PORT, etc.) se existir.
+dotenv: ['.env']
+
+vars:
+  GATEWAY: '{{.GATEWAY | default "http://localhost:4000"}}'
+
+tasks:
+  default:
+    desc: Lista os alvos disponíveis
+    cmds:
+      - task --list
+
+  help:
+    desc: Lista os alvos disponíveis
+    cmds:
+      - task --list
+
+  net:
+    desc: Cria a rede externa localai_net (idempotente)
+    cmds:
+      - docker network inspect localai_net >/dev/null 2>&1 || docker network create localai_net
+
+  up:
+    desc: Sobe perfil core (gateway + ollama + whisper)
+    deps: [net]
+    cmds:
+      - docker compose --profile core up -d
+
+  up-all:
+    desc: Sobe core + image (chat + visão + áudio + imagem)
+    deps: [net]
+    cmds:
+      - docker compose --profile core --profile image up -d
+
+  perf:
+    desc: Sobe perfil perf (vLLM)
+    deps: [net]
+    cmds:
+      - docker compose --profile perf up -d
+
+  down:
+    desc: Derruba tudo
+    cmds:
+      - docker compose --profile core --profile image --profile perf down
+
+  logs:
+    desc: Segue os logs de todos os serviços
+    cmds:
+      - docker compose logs -f
+
+  config:
+    desc: Valida a composição (docker compose config)
+    cmds:
+      - docker compose --profile core --profile image --profile perf config
+
+  pull:
+    desc: Baixa os pesos dos modelos
+    cmds:
+      - cmd: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/pull-models.ps1
+        platforms: [windows]
+      - cmd: bash scripts/pull-models.sh
+        platforms: [linux, darwin]
+
+  create-models:
+    desc: Cria aliases do Ollama a partir dos Modelfiles (aplica params do catálogo)
+    cmds:
+      # Comando inline (só docker exec) — funciona em qualquer SO.
+      - docker exec localai-ollama ollama create cutcast-cuts   -f /modelfiles/cutcast-cuts.Modelfile
+      - docker exec localai-ollama ollama create cutcast-vision -f /modelfiles/cutcast-vision.Modelfile
+
+  smoke:
+    desc: Roda o smoke-test em todas as rotas (✅/❌)
+    cmds:
+      - cmd: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/smoke-test.ps1
+        platforms: [windows]
+      - cmd: GATEWAY={{.GATEWAY}} LITELLM_MASTER_KEY=$LITELLM_MASTER_KEY bash scripts/smoke-test.sh
+        platforms: [linux, darwin]
+
+  key:
+    desc: Cria uma virtual key de exemplo (rpm/tpm) via gateway
+    cmds:
+      - >
+        curl -s -X POST "{{.GATEWAY}}/key/generate"
+        -H "Authorization: Bearer $LITELLM_MASTER_KEY"
+        -H "Content-Type: application/json"
+        -d '{"models":["chat-cuts","vision-default","whisper","image-thumbs"],"rpm_limit":60,"tpm_limit":200000,"max_parallel_requests":2,"metadata":{"project":"example"}}'
+
+  add-model:
+    desc: 'Scaffold de um novo modelo. Uso: task add-model -- <nome> <backend> <model_id> [alias]'
+    cmds:
+      - cmd: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/add-model.ps1 {{.CLI_ARGS}}
+        platforms: [windows]
+      - cmd: bash scripts/add-model.sh {{.CLI_ARGS}}
+        platforms: [linux, darwin]

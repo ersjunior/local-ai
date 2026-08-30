@@ -1,0 +1,25 @@
+# Ambiente
+.env
+
+# Pesos baixados pelo LocalAI em config/localai/ — versiona só os .yaml.
+config/localai/**
+!config/localai/
+!config/localai/*.yaml
+
+# Artefatos de teste
+*.wav
+*.tmp
+tmp/
+scratch/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# SO / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

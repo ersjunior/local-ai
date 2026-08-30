@@ -1,0 +1,123 @@
+# ==========================================================================
+# LiteLLM Gateway — config.yaml
+#
+# Ponto de entrada único: http://HOST:4000/v1
+# Roteia por NOME LÓGICO de modelo -> backend correto.
+#
+# Nomes lógicos expostos aos projetos consumidores:
+#   chat-cuts      -> Ollama (LLM de texto)
+#   vision-default -> Ollama (VLM / visão)
+#   whisper        -> faster-whisper server (transcrição)
+#   image-thumbs   -> LocalAI (geração de imagem)
+#
+# Ao ADICIONAR um modelo ao catálogo (config/models/<x>.yaml), adicione também
+# a rota correspondente aqui em `model_list`. O scripts/add-model.sh imprime
+# o bloco pronto para colar.
+#
+# Observação sobre áudio/imagem:
+#   Versões modernas do LiteLLM roteiam /chat/completions, /embeddings,
+#   /audio/transcriptions e /images/generations. Se a versão fixada NÃO
+#   proxyar áudio/imagem, use as ROTAS DIRETAS dos backends:
+#     - whisper:  http://HOST:18001  (/v1/audio/transcriptions)
+#     - imagem:   http://HOST:18002  (/v1/images/generations)
+#   Ver docs/integrating-a-project.md.
+# ==========================================================================
+
+model_list:
+  # ---- Chat (texto) via Ollama --------------------------------------------
+  - model_name: chat-cuts
+    litellm_params:
+      # provider ollama_chat -> usa /api/chat (melhor p/ chat multi-turn).
+      model: ollama_chat/cutcast-cuts
+      api_base: http://ollama:11434
+    model_info:
+      mode: chat
+      metadata:
+        catalog: chat-qwen3-32b.yaml
+
+  # Alternativa direta ao modelo base (sem alias), útil p/ debug.
+  - model_name: chat-gpt-oss
+    litellm_params:
+      model: ollama_chat/gpt-oss:20b
+      api_base: http://ollama:11434
+    model_info:
+      mode: chat
+      metadata:
+        catalog: chat-gpt-oss-20b.yaml
+
+  # ---- Visão (VLM) via Ollama ---------------------------------------------
+  - model_name: vision-default
+    litellm_params:
+      model: ollama_chat/cutcast-vision
+      api_base: http://ollama:11434
+    model_info:
+      mode: chat
+      supports_vision: true
+      metadata:
+        catalog: vision-qwen3-vl.yaml
+
+  # ---- Transcrição via faster-whisper server ------------------------------
+  # O server é OpenAI-compatível; tratamos como provider openai custom.
+  - model_name: whisper
+    litellm_params:
+      model: openai/large-v3
+      api_base: http://whisper:8000/v1
+      api_key: "dummy"  # backend local não valida chave
+    model_info:
+      mode: audio_transcription
+      metadata:
+        catalog: whisper-large-v3.yaml
+
+  # ---- Imagem via LocalAI --------------------------------------------------
+  # LocalAI é OpenAI-compatível em /v1/images/generations.
+  - model_name: image-thumbs
+    litellm_params:
+      model: openai/flux-schnell      # PADRÃO: cabe no 24GB, rápido (4 passos), Apache-2.0
+      # model: openai/qwen-image      # alternativa: melhor texto na imagem, porém ~20B (pesado no 4090)
+      api_base: http://images:8080/v1
+      api_key: "dummy"
+    model_info:
+      mode: image_generation
+      metadata:
+        catalog: image-flux-schnell.yaml
+
+# --------------------------------------------------------------------------
+# Configurações gerais do gateway
+# --------------------------------------------------------------------------
+general_settings:
+  # Master key: administra o gateway e cria virtual keys por projeto.
+  master_key: os.environ/LITELLM_MASTER_KEY
+  # Salt para criptografar credenciais (usado quando há DATABASE_URL).
+  # database_url: os.environ/DATABASE_URL   # descomente p/ persistir keys/logs
+
+litellm_settings:
+  # Guard de VRAM (single-GPU): serializa cargas pesadas globalmente.
+  # Mantém baixo para não empilhar LLM + imagem simultâneos na 4090.
+  # (limite por-chave é definido ao criar cada virtual key)
+  drop_params: true
+  # Logging de uso (stdout). Integre callbacks (langfuse etc.) se desejar.
+  set_verbose: false
+
+router_settings:
+  # Concurrency global: quantas requisições pesadas em paralelo no máximo.
+  # Ajuda a evitar OOM de VRAM quando várias etapas chegam juntas.
+  num_retries: 1
+  timeout: 600
+
+# --------------------------------------------------------------------------
+# COMO CRIAR VIRTUAL KEYS POR PROJETO
+#
+#   curl -X POST http://HOST:4000/key/generate \
+#     -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
+#     -H "Content-Type: application/json" \
+#     -d '{
+#           "models": ["chat-cuts","vision-default","whisper","image-thumbs"],
+#           "rpm_limit": 60,
+#           "tpm_limit": 200000,
+#           "max_parallel_requests": 2,
+#           "metadata": {"project": "cutcast"}
+#         }'
+#
+# A resposta traz "key": "sk-...". Entregue essa chave ao projeto e configure
+# OPENAI_API_KEY=<key> + OPENAI_BASE_URL=http://HOST:4000/v1.
+# --------------------------------------------------------------------------

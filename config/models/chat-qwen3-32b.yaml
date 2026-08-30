@@ -1,0 +1,18 @@
+# CATÁLOGO — fonte de verdade / documentação de um modelo.
+# Ao adicionar um arquivo aqui, adicione TAMBÉM a rota em
+# config/gateway/config.yaml (model_list). O scripts/add-model.sh ajuda.
+
+logical_name: chat-cuts        # nome usado pelos projetos consumidores
+backend: ollama                # ollama | whisper | localai | vllm
+model_id: qwen3:32b            # id real puxado pelo backend
+alias: cutcast-cuts            # alias criado via `ollama cp` (usado na rota)
+params:
+  temperature: 0.6
+  num_ctx: 8192
+  size: "32B"
+vram_estimate: "~20 GB (Q4_K_M) — cabe no 4090 sozinho"
+license: "Qwen (uso comercial permitido, com restrições — verificar Qwen LICENSE)"
+notes: >
+  LLM de texto padrão para geração de "cuts". keep_alive curto para liberar
+  VRAM antes de imagem. Não co-residir com modelo de imagem quente.
+enabled: true

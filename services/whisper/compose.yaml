@@ -1,0 +1,47 @@
+# services/whisper/compose.yaml
+#
+# Backend de transcrição -> faster-whisper server (CUDA).
+# Expõe /v1/audio/transcriptions com timestamps (OpenAI-compatível).
+# Imagem: hwdsl2/whisper-server:cuda (leve; server compatível com a API OpenAI).
+services:
+  whisper:
+    image: hwdsl2/whisper-server:cuda
+    container_name: localai-whisper
+    restart: unless-stopped
+    # Perfil core: sobe com áudio. Sem profile, o serviço subiria SEMPRE.
+    profiles: ["core"]
+    # Porta no host: 18001 -> 8000 no container (rota direta opcional).
+    ports:
+      - "${WHISPER_PORT:-18001}:8000"
+    environment:
+      # Modelo padrão de transcrição (large-v3 = MIT).
+      WHISPER_MODEL: "${WHISPER_MODEL:-large-v3}"
+      # Usa GPU/CUDA para inferência.
+      WHISPER_DEVICE: "${WHISPER_DEVICE:-cuda}"
+    volumes:
+      # Cache dos pesos do whisper.
+      - whisper_models:/models
+    networks:
+      - localai_net
+    healthcheck:
+      # O server expõe a doc/health em /; ajusta se a imagem mudar a rota.
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/ >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+volumes:
+  whisper_models:
+
+networks:
+  localai_net:
+    external: true
+    name: localai_net

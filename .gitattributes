@@ -1,0 +1,11 @@
+# Normalização de fim de linha (evita CRLF quebrando .sh no WSL/containers).
+* text=auto eol=lf
+
+# PowerShell precisa de CRLF.
+*.ps1 text eol=crlf
+
+# Shell scripts SEMPRE em LF (senão o \r quebra dentro do WSL/container).
+*.sh  text eol=lf
+
+# Modelfiles do Ollama são lidos dentro do container Linux -> LF.
+*.Modelfile text eol=lf

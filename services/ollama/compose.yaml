@@ -1,0 +1,55 @@
+# services/ollama/compose.yaml
+#
+# Backend Ollama -> chat + visão (endpoints OpenAI-compatíveis em /v1).
+# - Troca de modelos na VRAM sob demanda via keep_alive.
+# - OLLAMA_MAX_LOADED_MODELS=1: em single-GPU, mantém apenas 1 modelo quente
+#   para não estourar os 24 GB da RTX 4090.
+# - keep_alive curto: descarrega o LLM rapidamente, liberando VRAM antes de
+#   uma geração de imagem (ver docs/architecture.md - Orçamento de VRAM).
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: localai-ollama
+    restart: unless-stopped
+    # Perfil core: sobe com chat + visão. Sem profile, o serviço subiria SEMPRE.
+    profiles: ["core"]
+    # Porta no host: 11434 (rota direta opcional; o caminho principal é o gateway).
+    ports:
+      - "${OLLAMA_PORT:-11434}:11434"
+    environment:
+      # Descarrega o modelo da VRAM após 5min de inatividade (serializa cargas pesadas).
+      OLLAMA_KEEP_ALIVE: "${OLLAMA_KEEP_ALIVE:-5m}"
+      # Single-GPU: nunca mais de 1 modelo carregado ao mesmo tempo.
+      OLLAMA_MAX_LOADED_MODELS: "1"
+      # Permite requisições paralelas limitadas (guard de VRAM adicional no gateway).
+      OLLAMA_NUM_PARALLEL: "${OLLAMA_NUM_PARALLEL:-1}"
+    volumes:
+      # Volume nomeado para cache de pesos (usa RAM/disco como cache quente).
+      - ollama_models:/root/.ollama
+      # Modelfiles dos aliases lógicos (usados por `ollama create`).
+      - ../../config/ollama:/modelfiles:ro
+    networks:
+      - localai_net
+    # Healthcheck: lista de modelos disponíveis.
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    # GPU: reserva todos os dispositivos NVIDIA disponíveis.
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+volumes:
+  ollama_models:
+
+networks:
+  localai_net:
+    external: true
+    name: localai_net
