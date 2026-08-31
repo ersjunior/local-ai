@@ -14,6 +14,8 @@ JSON="Content-Type: application/json"
 # Rotas diretas (fallback caso o gateway não proxyar áudio/imagem).
 WHISPER_DIRECT="${WHISPER_DIRECT:-http://localhost:18001}"
 IMAGES_DIRECT="${IMAGES_DIRECT:-http://localhost:18002}"
+# API key do whisper (server exige Bearer quando definida). Usada na rota direta.
+WHISPER_API_KEY="${WHISPER_API_KEY:-}"
 
 pass() { printf '\033[1;32m✅ %s\033[0m\n' "$*"; }
 fail() { printf '\033[1;31m❌ %s\033[0m\n' "$*"; }
@@ -54,6 +56,7 @@ if [ -n "$WAV" ]; then
        -F "model=whisper" -F "file=@$WAV" -F "response_format=verbose_json" >/dev/null 2>&1; then
     pass "whisper (via gateway)"
   elif curl -fsS -X POST "$WHISPER_DIRECT/v1/audio/transcriptions" \
+       -H "Authorization: Bearer $WHISPER_API_KEY" \
        -F "model=large-v3" -F "file=@$WAV" -F "response_format=verbose_json" >/dev/null 2>&1; then
     pass "whisper (rota direta $WHISPER_DIRECT)"
   else

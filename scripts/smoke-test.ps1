@@ -18,6 +18,8 @@ $Json    = 'Content-Type: application/json'
 
 $WhisperDirect = if ($env:WHISPER_DIRECT) { $env:WHISPER_DIRECT } else { 'http://localhost:18001' }
 $ImagesDirect  = if ($env:IMAGES_DIRECT)  { $env:IMAGES_DIRECT }  else { 'http://localhost:18002' }
+# API key do whisper (server exige Bearer quando definida). Usada na rota direta.
+$WhisperKey    = if ($env:WHISPER_API_KEY) { $env:WHISPER_API_KEY } else { '' }
 
 function Pass ($m) { Write-Host "[OK] $m"   -ForegroundColor Green }
 function Fail ($m) { Write-Host "[X]  $m"   -ForegroundColor Red }
@@ -60,7 +62,7 @@ try {
     if ($LASTEXITCODE -eq 0) {
       Pass 'whisper (via gateway)'
     } else {
-      curl.exe -fsS -X POST "$WhisperDirect/v1/audio/transcriptions" -F 'model=large-v3' -F "file=@$wav" -F 'response_format=verbose_json' -o $null 2>$null
+      curl.exe -fsS -X POST "$WhisperDirect/v1/audio/transcriptions" -H "Authorization: Bearer $WhisperKey" -F 'model=large-v3' -F "file=@$wav" -F 'response_format=verbose_json' -o $null 2>$null
       if ($LASTEXITCODE -eq 0) { Pass "whisper (rota direta $WhisperDirect)" } else { Fail 'whisper' }
     }
   } else {

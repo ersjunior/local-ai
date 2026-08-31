@@ -61,8 +61,8 @@ model_list:
   - model_name: whisper
     litellm_params:
       model: openai/large-v3
-      api_base: http://whisper:8000/v1
-      api_key: "dummy"  # backend local não valida chave
+      api_base: http://whisper:9000/v1        # porta interna real do server (não 8000)
+      api_key: os.environ/WHISPER_API_KEY     # server exige Bearer token quando setado
     model_info:
       mode: audio_transcription
       metadata:

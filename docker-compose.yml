@@ -37,6 +37,8 @@ services:
       LITELLM_SALT_KEY: "${LITELLM_SALT_KEY:?defina LITELLM_SALT_KEY no .env}"
       # Opcional: persistência de keys/logs. Se ausente, keys ficam em memória.
       DATABASE_URL: "${DATABASE_URL:-}"
+      # Repassado à rota whisper (api_key: os.environ/WHISPER_API_KEY).
+      WHISPER_API_KEY: "${WHISPER_API_KEY:-}"
     volumes:
       # Config principal do LiteLLM (model_list, keys, limites).
       - ./config/gateway/config.yaml:/app/config.yaml:ro

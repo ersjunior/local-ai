@@ -3,6 +3,14 @@
 # Backend de transcrição -> faster-whisper server (CUDA).
 # Expõe /v1/audio/transcriptions com timestamps (OpenAI-compatível).
 # Imagem: hwdsl2/whisper-server:cuda (leve; server compatível com a API OpenAI).
+#
+# IMPORTANTE (confirmado no boot):
+#   - A porta INTERNA do server é 9000 (WHISPER_PORT default=9000), NÃO 8000.
+#   - Health check em /health.
+#   - Autenticação por API key: quando WHISPER_API_KEY é definido, TODA requisição
+#     precisa de "Authorization: Bearer <key>" (o gateway já envia — ver config).
+#     Deixe WHISPER_API_KEY vazio no .env para DESABILITAR a auth.
+#   - Dados/cache do modelo e a key ficam em /var/lib/whisper (persistir aqui).
 services:
   whisper:
     image: hwdsl2/whisper-server:cuda
@@ -10,22 +18,25 @@ services:
     restart: unless-stopped
     # Perfil core: sobe com áudio. Sem profile, o serviço subiria SEMPRE.
     profiles: ["core"]
-    # Porta no host: 18001 -> 8000 no container (rota direta opcional).
+    # Porta no host: 18001 -> 9000 no container (porta interna real do server).
     ports:
-      - "${WHISPER_PORT:-18001}:8000"
+      - "${WHISPER_PORT:-18001}:9000"
     environment:
       # Modelo padrão de transcrição (large-v3 = MIT).
       WHISPER_MODEL: "${WHISPER_MODEL:-large-v3}"
       # Usa GPU/CUDA para inferência.
       WHISPER_DEVICE: "${WHISPER_DEVICE:-cuda}"
+      # API key: se definida, o server exige Bearer token. O gateway usa a mesma.
+      # Vazio => autenticação desabilitada.
+      WHISPER_API_KEY: "${WHISPER_API_KEY:-}"
     volumes:
-      # Cache dos pesos do whisper.
-      - whisper_models:/models
+      # Dados/cache do modelo + arquivo da API key (diretório oficial do server).
+      - whisper_models:/var/lib/whisper
     networks:
       - localai_net
     healthcheck:
-      # O server expõe a doc/health em /; ajusta se a imagem mudar a rota.
-      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/ >/dev/null 2>&1 || exit 1"]
+      # Server responde em /health na porta interna 9000.
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9000/health >/dev/null 2>&1 || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5

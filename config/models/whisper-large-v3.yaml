@@ -15,4 +15,7 @@ license: "MIT (OpenAI Whisper large-v3)"
 notes: >
   Transcrição com timestamps via /v1/audio/transcriptions. Se a versão do
   LiteLLM não proxyar áudio, use a rota direta http://HOST:18001.
+  Server hwdsl2/whisper-server: porta interna 9000, health em /health, e exige
+  "Authorization: Bearer <WHISPER_API_KEY>" quando a key está definida (o gateway
+  já envia). Dados/cache do modelo ficam em /var/lib/whisper.
 enabled: true
