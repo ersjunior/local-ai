@@ -4,8 +4,10 @@ Plataforma de **inferência local em Docker** que expõe endpoints
 **OpenAI-compatíveis** através de um **gateway único** (LiteLLM). Qualquer
 projeto aponta apenas `OPENAI_BASE_URL` + uma chave e escolhe o modelo por um
 **nome lógico** (`chat-cuts`, `vision-default`, `whisper`, `image-thumbs`).
-Adicionar um modelo novo = adicionar um arquivo ao catálogo + uma rota no
-gateway — **sem tocar nos projetos consumidores**.
+Adicionar um modelo ao stack pode ser feito de **duas formas**:
+
+1. **Operador** (manual): catálogo `config/models/` + rota no gateway — ver [adding-a-model.md](docs/adding-a-model.md).
+2. **Apps externas** (dinâmico): API **Model Registry** em `/registry/v1` — cada app regista os seus modelos via virtual key, sem alterar os modelos base.
 
 > Repositório **independente e genérico**. O CutCast aparece apenas como
 > exemplo em `examples/` e `docs/`.
@@ -19,6 +21,10 @@ gateway — **sem tocar nos projetos consumidores**.
    (só sabem                virtual keys + limites       ──►  LocalAI  (imagem)
     BASE_URL+key)           logging de uso               ──►  vLLM     (perf, opcional)
                                                     RTX 4090 (24 GB, single-GPU)
+
+   Apps externas ──►  Model Registry (:4010/registry/v1)
+                      CRUD modelos dinâmicos (multi-tenant)
+                      worker → ollama pull → LiteLLM /model/new (hot reload)
 ```
 
 Detalhes em [docs/architecture.md](docs/architecture.md).
@@ -87,14 +93,20 @@ Os passos de `pull`/`create-models`/`smoke` são scripts — use `.sh`
 
 ## Quickstart por SO
 
-Os passos são os mesmos em todos: **net → up → pull → create-models → smoke**.
+Os passos são os mesmos em todos: **net → build → up → pull → create-models → smoke**.
 Antes: `cp .env.example .env` (Windows PowerShell: `Copy-Item .env.example .env`)
-e ajuste `LITELLM_MASTER_KEY` / `LITELLM_SALT_KEY`.
+e ajuste `LITELLM_MASTER_KEY`, `LITELLM_SALT_KEY`, `POSTGRES_*`, `LITELLM_DB_*`,
+`DATABASE_URL`, `REGISTRY_DB_*` e `REGISTRY_DATABASE_URL` (senhas devem bater).
+
+> Na **primeira subida** com Postgres/registry: se o volume `local-ai_localai_pg`
+> já existia antes destes serviços, crie o database `registry` manualmente — ver
+> [REGISTRY.md](docs/REGISTRY.md#banco-de-dados).
 
 ### WSL2 (recomendado no Windows, com GPU)
 
 ```bash
 cp .env.example .env
+make build         # 1ª vez: constrói imagem do registry
 make up            # ou: task up
 make pull          # ou: task pull
 make create-models # ou: task create-models
@@ -139,6 +151,7 @@ make smoke         # ou: task smoke
 |-------------------------|--------------------|--------------------|------------------------------------------------------------------|
 | Criar rede              | `make net`         | `task net`         | `docker network create localai_net`                              |
 | Subir core              | `make up`          | `task up`          | `docker compose --profile core up -d`                            |
+| Build registry (1ª vez) | `make build`       | `task build`       | `docker compose --profile core build registry`                   |
 | Subir core + imagem     | `make up-all`      | `task up-all`      | `docker compose --profile core --profile image up -d`            |
 | Subir perf (vLLM)       | `make perf`        | `task perf`        | `docker compose --profile perf up -d`                            |
 | Validar config          | `make config`      | `task config`      | `docker compose --profile core --profile image --profile perf config` |
@@ -149,17 +162,19 @@ make smoke         # ou: task smoke
 | Smoke-test              | `make smoke`       | `task smoke`       | `scripts/smoke-test.sh` ou `scripts/smoke-test.ps1`              |
 | Virtual key exemplo     | `make key`         | `task key`         | `curl -X POST .../key/generate ...`                              |
 | Scaffold de modelo      | `make add-model`   | `task add-model -- <args>` | `scripts/add-model.sh` ou `scripts/add-model.ps1`        |
+| Testes registry         | `make registry-test` | `task registry-test` | `cd registry && pytest tests/ -v`                          |
+| Exemplos registry       | `make registry-examples` | `task registry-examples` | `VIRTUAL_KEY=sk-... scripts/registry-examples.sh`      |
 
 O `task` escolhe automaticamente `.sh` (Linux/macOS/WSL2) ou `.ps1` (Windows
 nativo) via `platforms:`.
 
 ### Perfis
 
-| Perfil | Serviços                          |
-|--------|-----------------------------------|
-| core   | gateway + ollama + whisper        |
-| image  | + LocalAI (geração de imagem)     |
-| perf   | vLLM (alta vazão / guided JSON)   |
+| Perfil | Serviços |
+|--------|----------|
+| core   | postgres + redis + gateway + ollama + whisper + **registry** + **registry-worker** |
+| image  | + LocalAI (geração de imagem) |
+| perf   | vLLM (alta vazão / guided JSON) |
 
 ### Portas no host
 
@@ -171,6 +186,7 @@ nativo) via `platforms:`.
 | images   | 18002  | `/v1/images/generations`          |
 | vllm     | 18000  | `/v1` (perfil perf)               |
 | postgres | 5432   | banco (DBeaver/pgAdmin)           |
+| registry | 4010   | `/registry/v1` (modelos dinâmicos) |
 
 ---
 
@@ -182,6 +198,8 @@ O stack usa **um servidor Postgres compartilhado** (`postgres:16`, serviço
 
 - O LiteLLM usa o database `litellm` (role `litellm`), criado idempotentemente
   pelo init `config/postgres/init/01-init.sh` na primeira subida.
+- O **Model Registry** usa o database `registry` (role `registry`), criado pelo
+  init `config/postgres/init/02-init-registry.sh`.
 - Apps futuras do stack ganham **o seu próprio database** no mesmo servidor
   (sem 1 container por app), mantendo isolamento de schema.
 
@@ -196,7 +214,7 @@ corrupção/permissão no disco Windows.
 | Porta    | `5432` (`POSTGRES_PORT`)           |
 | Usuário  | `POSTGRES_USER` (ex.: `localai`, superusuário) |
 | Senha    | `POSTGRES_PASSWORD`                |
-| Database | `postgres` (ou `litellm`)          |
+| Database | `postgres` (ou `litellm`, `registry`) |
 
 ### Adicionar uma nova aplicação (novo role + database)
 
@@ -226,11 +244,57 @@ curl -X POST http://localhost:4000/key/generate \
         "rpm_limit": 60,
         "tpm_limit": 200000,
         "max_parallel_requests": 2,
-        "metadata": {"project": "cutcast"}
+        "metadata": {"app_id": "meu-app", "project": "meu-app"}
       }'
 ```
 
-Atalhos: `make key` / `task key`. A resposta traz `"key": "sk-..."`.
+Use `metadata.app_id` para identificar o tenant no **Model Registry** (cada app
+só vê e gere os seus modelos dinâmicos). Atalhos: `make key` / `task key`.
+A resposta traz `"key": "sk-..."`.
+
+---
+
+## Model Registry (modelos dinâmicos multi-app)
+
+API de gestão para **apps externas** registarem modelos próprios sem alterar os
+modelos base do stack (`chat-cuts`, `vision-default`, etc.).
+
+| Item | Valor |
+|------|-------|
+| URL | `http://localhost:4010/registry/v1` |
+| Swagger | `http://localhost:4010/registry/docs` |
+| Auth | `Authorization: Bearer <virtual-key>` (master key **não** aceita) |
+| Tenant | `metadata.app_id` (ou `project`) na virtual key |
+
+### Fluxo resumido
+
+1. App cria virtual key com `metadata.app_id`.
+2. `POST /registry/v1/models` com `source_type` + `source_uri` + `purpose`.
+3. Worker faz pull (Ollama/HF) e regista rota no LiteLLM (`POST /model/new`).
+4. Quando `status=ready`, usar `litellm_route` em `POST /v1/chat/completions`.
+
+```bash
+# Criar modelo Ollama (assíncrono — acompanhar via GET /models/{id})
+curl -X POST http://localhost:4010/registry/v1/models \
+  -H "Authorization: Bearer $VIRTUAL_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"source_type":"ollama","source_uri":"llama3.2","purpose":"chat","alias":"llama32"}'
+
+# Inferir (quando ready)
+curl http://localhost:4000/v1/chat/completions \
+  -H "Authorization: Bearer $VIRTUAL_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"dyn-meuapp-llama32","messages":[{"role":"user","content":"oi"}]}'
+```
+
+Regras: modelos **base** são read-only; cada app faz CRUD só nos **seus** modelos
+(`dyn-{app}-{alias}`). Fontes v1: `ollama`, `huggingface` (limitado). Ver
+[docs/REGISTRY.md](docs/REGISTRY.md) para estados, limites, segurança e troubleshooting.
+
+```bash
+make registry-test      # testes unitários (8 testes)
+VIRTUAL_KEY=sk-... make registry-examples
+```
 
 ---
 
@@ -306,6 +370,12 @@ Detalhes em [docs/adding-a-model.md](docs/adding-a-model.md).
   automaticamente para as **rotas diretas** (`:18001` / `:18002`) — que também
   estão comentadas em `examples/cutcast.env`.
 
+- **Registry retorna 401**: use virtual key (`sk-...`), não a master key. Confirme
+  `metadata.app_id` na key e que o gateway está healthy.
+
+- **Registry DB não existe** (volume Postgres antigo): crie manualmente — ver
+  [REGISTRY.md](docs/REGISTRY.md#banco-de-dados).
+
 - **Bind mounts no Windows**: os caminhos relativos dos compose
   (`../../config/models`, `../../config/ollama`) funcionam no Docker Desktop;
   use sempre `/` nos paths (nunca `\`).
@@ -317,6 +387,7 @@ Detalhes em [docs/adding-a-model.md](docs/adding-a-model.md).
 - [Arquitetura e orçamento de VRAM](docs/architecture.md)
 - [Adicionando um modelo](docs/adding-a-model.md)
 - [Integrando um projeto](docs/integrating-a-project.md)
+- [Model Registry — API de modelos dinâmicos](docs/REGISTRY.md)
 
 ## Licença
 

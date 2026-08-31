@@ -32,8 +32,13 @@ tasks:
     cmds:
       - docker network inspect localai_net >/dev/null 2>&1 || docker network create localai_net
 
+  build:
+    desc: Constrói imagens locais (registry)
+    cmds:
+      - docker compose --profile core build registry
+
   up:
-    desc: Sobe perfil core (gateway + ollama + whisper)
+    desc: Sobe perfil core (postgres, gateway, ollama, whisper, registry, worker)
     deps: [net]
     cmds:
       - docker compose --profile core up -d
@@ -104,3 +109,15 @@ tasks:
         platforms: [windows]
       - cmd: bash scripts/add-model.sh {{.CLI_ARGS}}
         platforms: [linux, darwin]
+
+  registry-test:
+    desc: Testes unitários do Model Registry
+    dir: registry
+    cmds:
+      - pip install -q -r requirements.txt
+      - pytest tests/ -v
+
+  registry-examples:
+    desc: Exemplos curl do registry (VIRTUAL_KEY=sk-... task registry-examples)
+    cmds:
+      - bash scripts/registry-examples.sh

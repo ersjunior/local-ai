@@ -81,9 +81,9 @@ model_list:
       metadata:
         catalog: image-flux-schnell.yaml
 
-# --------------------------------------------------------------------------
-# Configurações gerais do gateway
-# --------------------------------------------------------------------------
+# Modelos dinâmicos (registry): apps externas registam rotas via POST /registry/v1/models.
+# O worker chama POST /model/new no gateway (store_model_in_db: true) — sem reinício.
+# Ver docs/REGISTRY.md.
 general_settings:
   # Master key: administra o gateway e cria virtual keys por projeto.
   master_key: os.environ/LITELLM_MASTER_KEY

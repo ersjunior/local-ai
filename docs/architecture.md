@@ -6,23 +6,23 @@ Todos os projetos consumidores apontam para **um único gateway** (LiteLLM).
 Eles só precisam saber `OPENAI_BASE_URL` + uma virtual key, e escolhem o modelo
 por um **nome lógico** (`chat-cuts`, `vision-default`, `whisper`, `image-thumbs`).
 
+Apps externas podem ainda registar **modelos dinâmicos** via **Model Registry**
+(`:4010/registry/v1`), sem alterar os modelos base.
+
 ```
                         ┌───────────────────────────────────────────┐
    Projeto A ─┐         │            Host (Ryzen 9 5900X)            │
    Projeto B ─┼──HTTP──►│  Gateway LiteLLM  :4000/v1                 │
-   Projeto C ─┘         │  - roteia por nome lógico                  │
-   (só sabem            │  - virtual keys (rpm/tpm/parallel)         │
-    BASE_URL+key)       │  - logging de uso                         │
-                        │        │            │           │         │
+   Projeto C ─┘         │  Postgres :5432 (litellm + registry)       │
+   (BASE_URL+key)       │        │            │           │         │
                         │        ▼            ▼           ▼         │
                         │  ┌─────────┐  ┌──────────┐ ┌──────────┐   │
                         │  │ Ollama  │  │ Whisper  │ │ LocalAI  │   │
                         │  │ chat +  │  │ áudio    │ │ imagem   │   │
                         │  │ visão   │  │ :18001   │ │ :18002   │   │
-                        │  │ :11434  │  └──────────┘ └──────────┘   │
-                        │  └─────────┘                              │
+                        │  └─────────┘  └──────────┘ └──────────┘   │
                         │       └──────── RTX 4090 (24 GB VRAM) ────┘
-                        │            (single-GPU, serializado)        │
+                        │  Registry :4010 + Worker + Redis (perfil core) │
                         │  vLLM :18000 (perfil perf, opcional)        │
                         └───────────────────────────────────────────┘
 ```
@@ -92,8 +92,8 @@ reserva ~90% da VRAM e **não co-reside** com imagem no mesmo 4090. Use o perfil
 
 ```
    gateway (LiteLLM) ──► postgres:5432 ──► database `litellm` (role litellm)
-                                       └─► database `app2`    (role app2)   [futuro]
-                                       └─► database `app3`    (role app3)   [futuro]
+   registry API      ──► postgres:5432 ──► database `registry` (role registry)
+                                       └─► database `appN`    (role appN)   [futuro]
 ```
 
 O LiteLLM exige um banco para persistir **virtual keys**, orçamentos e logs
@@ -115,3 +115,38 @@ mantém isolamento de schema:
 
 Adicionar app nova = novo role + novo database no mesmo servidor (template no
 fim do script de init, ou via `psql`). Ver README (seção Banco de dados).
+
+## Model Registry (modelos dinâmicos multi-app)
+
+Serviço **genérico** para apps externas registarem modelos sem alterar o
+catálogo base do operador.
+
+```
+App externa ──Bearer sk-...──► Registry API (:4010/registry/v1)
+                                    │
+                                    ▼
+                              Postgres (registry.dynamic_models)
+                                    │
+                              Registry Worker ──► Ollama pull (API)
+                                    │              LiteLLM POST /model/new
+                                    ▼
+App externa ──Bearer sk-...──► Gateway (:4000/v1) ──► backends
+```
+
+Componentes (perfil `core`):
+
+| Serviço | Função |
+|---------|--------|
+| `registry` | API FastAPI (`/registry/v1`) |
+| `registry-worker` | Jobs assíncronos (pull, register, delete) |
+| `redis` | Coordenação (health; idempotency futura) |
+
+**Multi-tenant:** cada virtual key mapeia para `owner_app_id` (via
+`metadata.app_id` na key). Modelos base (`is_base=true`) são read-only;
+modelos dinâmicos usam prefixo `dyn-{app}-{alias}`.
+
+**Integração LiteLLM:** `store_model_in_db: true` + `POST /model/new` e
+`POST /model/delete` — hot reload, sem reinício do stack.
+
+**Fontes v1:** `ollama` (pull nativo), `huggingface` (via `ollama pull hf.co/...`,
+limitado). Ver [REGISTRY.md](REGISTRY.md).

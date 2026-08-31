@@ -1,8 +1,15 @@
 # Adicionando um modelo
 
-O catálogo (`config/models/`) é **desacoplado** dos backends e dos projetos
-consumidores. Adicionar um modelo **não exige** mexer em nenhum projeto que
-consome o gateway — apenas no gateway.
+Há **duas formas** de adicionar modelos ao stack:
+
+| Quem | Como | Doc |
+|------|------|-----|
+| **Operador** (manual) | Catálogo `config/models/` + rota no gateway | Este documento |
+| **App externa** (dinâmico) | API `POST /registry/v1/models` com virtual key | [REGISTRY.md](REGISTRY.md) |
+
+O catálogo manual é **desacoplado** dos projetos consumidores. O **Model Registry**
+permite que cada app registe modelos próprios (`dyn-{app}-{alias}`) sem alterar
+os modelos base (`chat-cuts`, etc.).
 
 ## Catálogo (documentação) vs Definição real (servida)
 

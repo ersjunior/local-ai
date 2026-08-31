@@ -1,0 +1,113 @@
+openapi: 3.1.0
+info:
+  title: local-ai Model Registry
+  version: "1.0.0"
+  description: |
+    Especificação de referência. A fonte canónica em runtime é gerada pelo FastAPI:
+    GET http://localhost:4010/registry/openapi.json
+    Swagger UI: http://localhost:4010/registry/docs
+servers:
+  - url: http://localhost:4010/registry/v1
+    description: Host local
+  - url: http://registry:4010/registry/v1
+    description: Rede Docker (localai_net)
+security:
+  - bearerAuth: []
+paths:
+  /health:
+    get:
+      summary: Health check (sem auth)
+      security: []
+      responses:
+        "200":
+          description: OK
+  /capabilities:
+    get:
+      summary: Fontes, purposes e limites
+      responses:
+        "200":
+          description: CapabilitiesResponse
+  /models:
+    get:
+      summary: Lista base_models + owned_models
+      responses:
+        "200":
+          description: ModelListResponse
+    post:
+      summary: Registar modelo (202 assíncrono)
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ModelCreateRequest"
+      responses:
+        "202":
+          description: ModelResponse (status queued)
+  /models/{id}:
+    get:
+      summary: Detalhe (só owner)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: ModelResponse
+    patch:
+      summary: Update (só owner)
+      responses:
+        "200":
+          description: ModelResponse
+    delete:
+      summary: Delete (202 assíncrono)
+      responses:
+        "202":
+          description: ModelResponse (status deleting)
+  /models/{id}/retry:
+    post:
+      summary: Retry se failed
+      responses:
+        "202":
+          description: ModelResponse
+  /models/{id}/warm:
+    post:
+      summary: Warm (opcional v1)
+      responses:
+        "202":
+          description: ModelResponse
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: Virtual key LiteLLM (sk-...)
+  schemas:
+    ModelCreateRequest:
+      type: object
+      required: [source_type, source_uri, purpose]
+      properties:
+        source_type:
+          type: string
+          enum: [ollama, huggingface, other]
+        source_uri:
+          type: string
+        purpose:
+          type: string
+          enum: [chat, vision, transcribe, image]
+        display_name:
+          type: string
+        alias:
+          type: string
+        external_ref:
+          type: string
+        metadata:
+          type: object

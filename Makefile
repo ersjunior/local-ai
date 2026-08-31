@@ -17,15 +17,18 @@ include .env
 export
 endif
 
-.PHONY: net up up-all perf down logs pull create-models smoke key add-model config help
+.PHONY: net up up-all perf down logs pull create-models smoke key add-model config help build registry-test registry-examples
 
 help: ## Lista os alvos disponíveis
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
+
+build: ## Constrói imagens locais (registry)
+	$(COMPOSE) --profile core build registry
 
 net: ## Cria a rede externa localai_net (idempotente)
 	@docker network inspect localai_net >/dev/null 2>&1 || docker network create localai_net
 
-up: net ## Sobe perfil core (gateway + ollama + whisper)
+up: net ## Sobe perfil core (postgres, gateway, ollama, whisper, registry, worker)
 	$(COMPOSE) --profile core up -d
 
 up-all: net ## Sobe core + image (chat + visão + áudio + imagem)
@@ -62,3 +65,9 @@ key: ## Cria uma virtual key de exemplo (rpm/tpm) via gateway
 
 add-model: ## Scaffold de um novo modelo no catálogo (scripts/add-model.sh)
 	bash scripts/add-model.sh
+
+registry-test: ## Testes unitários do Model Registry
+	cd registry && pip install -q -r requirements.txt pytest && pytest tests/ -v
+
+registry-examples: ## Exemplos curl do registry (VIRTUAL_KEY=sk-... make registry-examples)
+	VIRTUAL_KEY=$(VIRTUAL_KEY) bash scripts/registry-examples.sh

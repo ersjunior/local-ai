@@ -112,3 +112,15 @@ networks:
 ```
 
 De fora do Docker (host), o mesmo banco fica em `localhost:5432`.
+
+## Model Registry (modelos dinâmicos)
+
+Apps externas podem registar modelos próprios via API dedicada (não mistura com `/v1`):
+
+| Variável | Valor |
+|----------|-------|
+| Registry URL | `http://HOST:4010/registry/v1` |
+| Auth | `Authorization: Bearer <virtual-key>` (mesma key do `/v1`) |
+| Tenant | Derivado de `metadata.app_id` na virtual key |
+
+Ver [docs/REGISTRY.md](REGISTRY.md) para CRUD, estados e limitações v1.

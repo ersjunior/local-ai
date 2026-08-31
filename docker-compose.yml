@@ -5,11 +5,12 @@
 # agregados aqui via `include`.
 #
 # PROFILES:
-#   core  -> gateway + ollama + whisper   (chat + visão + áudio)
+#   core  -> postgres + redis + gateway + ollama + whisper + registry + registry-worker
 #   image -> images (LocalAI, geração de imagem)
 #   perf  -> vllm   (alta vazão / guided JSON, opcional)
 #
 # Exemplos:
+#   docker compose --profile core build registry   # 1ª vez
 #   docker compose --profile core up -d
 #   docker compose --profile core --profile image up -d
 #   docker compose --profile perf up -d
@@ -20,6 +21,7 @@ include:
   - services/whisper/compose.yaml
   - services/images/compose.yaml
   - services/vllm/compose.yaml
+  - services/registry/compose.yaml
 
 services:
   # Gateway único (LiteLLM). Roteia nomes lógicos -> backends.

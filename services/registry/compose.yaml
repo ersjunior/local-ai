@@ -1,0 +1,86 @@
+# services/registry/compose.yaml
+#
+# Model Registry API + Worker + Redis (fila/coordenação).
+# Expõe /registry/v1 para apps externas gerirem modelos dinâmicos.
+# Perfil core: sobe junto com gateway + postgres.
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: localai-redis
+    restart: unless-stopped
+    profiles: ["core"]
+    networks:
+      - localai_net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  registry:
+    build:
+      context: ../../registry
+      dockerfile: Dockerfile
+    image: localai-registry:latest
+    container_name: localai-registry
+    restart: unless-stopped
+    profiles: ["core"]
+    ports:
+      - "${REGISTRY_PORT:-4010}:4010"
+    environment:
+      REGISTRY_DATABASE_URL: "${REGISTRY_DATABASE_URL}"
+      LITELLM_GATEWAY_URL: "http://gateway:4000"
+      LITELLM_MASTER_KEY: "${LITELLM_MASTER_KEY}"
+      OLLAMA_URL: "http://ollama:11434"
+      IMAGES_URL: "http://images:8080"
+      HUGGINGFACE_TOKEN: "${HUGGING_FACE_HUB_TOKEN:-}"
+      REDIS_URL: "redis://redis:6379/0"
+      CATALOG_PATH: "/catalog"
+      MAX_MODELS_PER_TENANT: "${REGISTRY_MAX_MODELS_PER_TENANT:-10}"
+      MAX_CONCURRENT_DOWNLOADS: "${REGISTRY_MAX_CONCURRENT_DOWNLOADS:-2}"
+    volumes:
+      - ../../config/models:/catalog:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      gateway:
+        condition: service_started
+    networks:
+      - localai_net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:4010/registry/v1/health >/dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+
+  registry-worker:
+    image: localai-registry:latest
+    container_name: localai-registry-worker
+    restart: unless-stopped
+    profiles: ["core"]
+    command: ["python", "-m", "app.worker.runner"]
+    environment:
+      REGISTRY_DATABASE_URL: "${REGISTRY_DATABASE_URL}"
+      LITELLM_GATEWAY_URL: "http://gateway:4000"
+      LITELLM_MASTER_KEY: "${LITELLM_MASTER_KEY}"
+      OLLAMA_URL: "http://ollama:11434"
+      IMAGES_URL: "http://images:8080"
+      HUGGINGFACE_TOKEN: "${HUGGING_FACE_HUB_TOKEN:-}"
+      REDIS_URL: "redis://redis:6379/0"
+      MAX_CONCURRENT_DOWNLOADS: "${REGISTRY_MAX_CONCURRENT_DOWNLOADS:-2}"
+      OLLAMA_PULL_TIMEOUT_SEC: "${REGISTRY_OLLAMA_PULL_TIMEOUT_SEC:-1800}"
+    depends_on:
+      registry:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+    networks:
+      - localai_net
+
+networks:
+  localai_net:
+    external: true
+    name: localai_net

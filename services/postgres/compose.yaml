@@ -26,6 +26,10 @@ services:
       LITELLM_DB_USER: "${LITELLM_DB_USER:-litellm}"
       LITELLM_DB_PASSWORD: "${LITELLM_DB_PASSWORD:?defina LITELLM_DB_PASSWORD no .env}"
       LITELLM_DB_NAME: "${LITELLM_DB_NAME:-litellm}"
+      # Repassadas ao script 02-init-registry.sh
+      REGISTRY_DB_USER: "${REGISTRY_DB_USER:-registry}"
+      REGISTRY_DB_PASSWORD: "${REGISTRY_DB_PASSWORD:-changeme-registry}"
+      REGISTRY_DB_NAME: "${REGISTRY_DB_NAME:-registry}"
     volumes:
       # Dados do Postgres (volume nomeado, dentro do disco do Docker).
       - localai_pg:/var/lib/postgresql/data
