@@ -1,0 +1,50 @@
+# services/postgres/compose.yaml
+#
+# Servidor PostgreSQL COMPARTILHADO do stack.
+# Arquitetura: 1 servidor Postgres, com 1 database + 1 role por aplicação
+# (o LiteLLM usa o database `litellm`; apps futuras ganham o seu próprio db no
+# mesmo servidor). Isso escala sem 1 container por app e isola o schema.
+#
+# - Volume NOMEADO (não bind-mount): evita corrupção/permissão no disco Windows.
+# - Porta 5432 exposta no host para DBeaver/pgAdmin (proteja com senha forte).
+# - Scripts em config/postgres/init/ rodam SÓ na 1ª criação do volume.
+services:
+  postgres:
+    image: postgres:16
+    container_name: localai-postgres
+    restart: unless-stopped
+    # Perfil core: o gateway (LiteLLM) depende deste banco.
+    profiles: ["core"]
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    environment:
+      # Superusuário do servidor (administra todos os databases).
+      POSTGRES_USER: "${POSTGRES_USER:-localai}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env}"
+      POSTGRES_DB: "${POSTGRES_DB:-postgres}"
+      # Repassadas ao script de init (cria role+db do LiteLLM idempotentemente).
+      LITELLM_DB_USER: "${LITELLM_DB_USER:-litellm}"
+      LITELLM_DB_PASSWORD: "${LITELLM_DB_PASSWORD:?defina LITELLM_DB_PASSWORD no .env}"
+      LITELLM_DB_NAME: "${LITELLM_DB_NAME:-litellm}"
+    volumes:
+      # Dados do Postgres (volume nomeado, dentro do disco do Docker).
+      - localai_pg:/var/lib/postgresql/data
+      # Init: .sql/.sh executados apenas quando o volume é criado do zero.
+      - ../../config/postgres/init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - localai_net
+    healthcheck:
+      # pg_isready garante que o gateway só suba com o banco pronto.
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-localai} -d $${POSTGRES_DB:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+volumes:
+  localai_pg:
+
+networks:
+  localai_net:
+    external: true
+    name: localai_net

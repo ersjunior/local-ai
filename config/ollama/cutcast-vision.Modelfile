@@ -1,7 +1,7 @@
 # Modelfile do alias lógico "cutcast-vision" (vision-default).
 # Aplica os parâmetros do catálogo config/models/vision-qwen3-vl.yaml.
 # Regerar o alias: ollama create cutcast-vision -f /modelfiles/cutcast-vision.Modelfile
-FROM qwen3-vl:7b
+FROM qwen3-vl:8b
 
 PARAMETER temperature 0.2
 PARAMETER num_ctx 8192

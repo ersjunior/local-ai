@@ -165,11 +165,53 @@ nativo) via `platforms:`.
 
 | Serviço | Porta  | Rota                              |
 |---------|--------|-----------------------------------|
-| gateway | 4000   | `/v1` (ponto de entrada único)    |
-| ollama  | 11434  | direta (opcional)                 |
-| whisper | 18001  | `/v1/audio/transcriptions`        |
-| images  | 18002  | `/v1/images/generations`          |
-| vllm    | 18000  | `/v1` (perfil perf)               |
+| gateway  | 4000   | `/v1` (ponto de entrada único)    |
+| ollama   | 11434  | interno por padrão (porta no host comentada no compose) |
+| whisper  | 18001  | `/v1/audio/transcriptions`        |
+| images   | 18002  | `/v1/images/generations`          |
+| vllm     | 18000  | `/v1` (perfil perf)               |
+| postgres | 5432   | banco (DBeaver/pgAdmin)           |
+
+---
+
+## Banco de dados (PostgreSQL compartilhado)
+
+O gateway LiteLLM persiste virtual keys, orçamentos e logs de uso em Postgres.
+O stack usa **um servidor Postgres compartilhado** (`postgres:16`, serviço
+`postgres`, perfil `core`) com o padrão **um database + um role por aplicação**:
+
+- O LiteLLM usa o database `litellm` (role `litellm`), criado idempotentemente
+  pelo init `config/postgres/init/01-init.sh` na primeira subida.
+- Apps futuras do stack ganham **o seu próprio database** no mesmo servidor
+  (sem 1 container por app), mantendo isolamento de schema.
+
+Dados ficam em **volume nomeado** (`localai_pg`) — nunca bind-mount, para evitar
+corrupção/permissão no disco Windows.
+
+### Conectar via DBeaver / pgAdmin
+
+| Campo    | Valor                              |
+|----------|------------------------------------|
+| Host     | `localhost`                        |
+| Porta    | `5432` (`POSTGRES_PORT`)           |
+| Usuário  | `POSTGRES_USER` (ex.: `localai`, superusuário) |
+| Senha    | `POSTGRES_PASSWORD`                |
+| Database | `postgres` (ou `litellm`)          |
+
+### Adicionar uma nova aplicação (novo role + database)
+
+Descomente/edite o **template** no fim de `config/postgres/init/01-init.sh`
+(roda só ao criar o volume do zero), **ou** rode via `psql` num servidor já ativo:
+
+```bash
+docker exec -it localai-postgres psql -U "$POSTGRES_USER" -d postgres -c \
+  "CREATE ROLE minhaapp LOGIN PASSWORD 'senha-forte';"
+docker exec -it localai-postgres psql -U "$POSTGRES_USER" -d postgres -c \
+  "CREATE DATABASE minhaapp OWNER minhaapp;"
+```
+
+> **Segurança**: a porta `5432` fica exposta no host. Use senhas fortes em
+> `POSTGRES_PASSWORD` e `LITELLM_DB_PASSWORD`. O `.env` continua fora do git.
 
 ---
 

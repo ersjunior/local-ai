@@ -13,7 +13,7 @@ warn() { printf '\033[1;33m[warn]\033[0m %s\n' "$*"; }
 # --- Ollama: LLMs + VLM ----------------------------------------------------
 log "Baixando modelos do Ollama (isso pode demorar)..."
 docker exec "$OLLAMA_CONTAINER" ollama pull qwen3:32b
-docker exec "$OLLAMA_CONTAINER" ollama pull qwen3-vl:7b
+docker exec "$OLLAMA_CONTAINER" ollama pull qwen3-vl:8b
 
 log "Modelo opcional Apache-2.0 (gpt-oss:20b). Ctrl-C para pular em 5s..."
 sleep 5 || true

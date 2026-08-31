@@ -15,6 +15,7 @@
 #   docker compose --profile perf up -d
 
 include:
+  - services/postgres/compose.yaml
   - services/ollama/compose.yaml
   - services/whisper/compose.yaml
   - services/images/compose.yaml
@@ -35,8 +36,8 @@ services:
       LITELLM_MASTER_KEY: "${LITELLM_MASTER_KEY:?defina LITELLM_MASTER_KEY no .env}"
       # Salt usado para criptografar credenciais no banco (se DATABASE_URL for usado).
       LITELLM_SALT_KEY: "${LITELLM_SALT_KEY:?defina LITELLM_SALT_KEY no .env}"
-      # Opcional: persistência de keys/logs. Se ausente, keys ficam em memória.
-      DATABASE_URL: "${DATABASE_URL:-}"
+      # Persistência de virtual keys/logs no Postgres (obrigatório: store_model_in_db).
+      DATABASE_URL: "${DATABASE_URL}"
       # Repassado à rota whisper (api_key: os.environ/WHISPER_API_KEY).
       WHISPER_API_KEY: "${WHISPER_API_KEY:-}"
     volumes:
@@ -45,6 +46,9 @@ services:
       # Catálogo montado como referência/documentação (somente leitura).
       - ./config/models:/catalog:ro
     depends_on:
+      # Só sobe DEPOIS do banco pronto (resolve o loop de reinício).
+      postgres:
+        condition: service_healthy
       # Sobe após os backends do perfil core. (image/perf são independentes.)
       ollama:
         condition: service_started

@@ -13,9 +13,12 @@ services:
     restart: unless-stopped
     # Perfil core: sobe com chat + visão. Sem profile, o serviço subiria SEMPRE.
     profiles: ["core"]
-    # Porta no host: 11434 (rota direta opcional; o caminho principal é o gateway).
-    ports:
-      - "${OLLAMA_PORT:-11434}:11434"
+    # Porta no host DESABILITADA de propósito: o gateway acessa via rede interna
+    # (ollama:11434) e o setup usa `docker exec`, então não precisa expor no host.
+    # Reative apenas se quiser acesso direto a http://localhost:11434 (ex.: debug)
+    # e desde que não haja um Ollama nativo já ocupando a 11434 no host.
+    #ports:
+    #  - "${OLLAMA_PORT:-11434}:11434"
     environment:
       # Descarrega o modelo da VRAM após 5min de inatividade (serializa cargas pesadas).
       OLLAMA_KEEP_ALIVE: "${OLLAMA_KEEP_ALIVE:-5m}"

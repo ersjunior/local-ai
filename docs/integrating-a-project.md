@@ -78,3 +78,37 @@ O CutCast normalmente define chaves `LOCAL_*` e monta o client via
 Ver `examples/cutcast.env`. `build_ai_client` deve usar `LOCAL_CHAT_BASE_URL`
 como `base_url` e `LOCAL_AI_API_KEY` como `api_key`, escolhendo o modelo pelo
 nome lógico conforme a etapa do pipeline.
+
+## Usar o Postgres compartilhado (serviço futuro do stack)
+
+Se você adicionar um serviço ao stack que precise de banco, **não suba outro
+Postgres** — use o servidor compartilhado com **um database dedicado**:
+
+1. Crie role + database (uma vez):
+
+```bash
+docker exec -it localai-postgres psql -U "$POSTGRES_USER" -d postgres -c \
+  "CREATE ROLE minhaapp LOGIN PASSWORD 'senha-forte';"
+docker exec -it localai-postgres psql -U "$POSTGRES_USER" -d postgres -c \
+  "CREATE DATABASE minhaapp OWNER minhaapp;"
+```
+
+   (ou adicione o bloco no template de `config/postgres/init/01-init.sh` antes
+   do primeiro `up`.)
+
+2. No compose do seu serviço, conecte à rede `localai_net` e use o **nome do
+   serviço** `postgres` como host (porta interna 5432):
+
+```yaml
+services:
+  minhaapp:
+    environment:
+      DATABASE_URL: postgresql://minhaapp:senha-forte@postgres:5432/minhaapp
+    networks: [localai_net]
+networks:
+  localai_net:
+    external: true
+    name: localai_net
+```
+
+De fora do Docker (host), o mesmo banco fica em `localhost:5432`.

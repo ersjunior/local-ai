@@ -87,3 +87,31 @@ chamaria `/acquire` num pre-call hook e `/release` no post-call.
 vLLM oferece alta vazão e **guided JSON** (saída estruturada garantida). Porém
 reserva ~90% da VRAM e **não co-reside** com imagem no mesmo 4090. Use o perfil
 `perf` isoladamente (GPU dedicada, ou quando rodar só texto).
+
+## Banco de dados (PostgreSQL compartilhado)
+
+```
+   gateway (LiteLLM) ──► postgres:5432 ──► database `litellm` (role litellm)
+                                       └─► database `app2`    (role app2)   [futuro]
+                                       └─► database `app3`    (role app3)   [futuro]
+```
+
+O LiteLLM exige um banco para persistir **virtual keys**, orçamentos e logs
+(`store_model_in_db: true` + `database_url`). Sem ele, o gateway entra em loop
+de reinício.
+
+Decisão de arquitetura: **um servidor Postgres compartilhado**, com **um
+database + um role por aplicação** (não um container por app). Isso escala e
+mantém isolamento de schema:
+
+- Serviço `postgres` (perfil `core`, `postgres:16`), rede `localai_net`.
+- Superusuário `POSTGRES_USER`; o gateway conecta com o role/db dedicados
+  `litellm` (host interno `postgres`, porta 5432).
+- Init idempotente em `config/postgres/init/01-init.sh` cria role+db checando
+  `pg_roles`/`pg_database` (roda só na 1ª criação do volume `localai_pg`).
+- Volume **nomeado** (`localai_pg`) — nunca bind-mount (evita corrupção no
+  disco Windows). Porta 5432 exposta no host (DBeaver/pgAdmin), atrás de senha
+  forte.
+
+Adicionar app nova = novo role + novo database no mesmo servidor (template no
+fim do script de init, ou via `psql`). Ver README (seção Banco de dados).

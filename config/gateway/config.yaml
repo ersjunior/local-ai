@@ -87,8 +87,11 @@ model_list:
 general_settings:
   # Master key: administra o gateway e cria virtual keys por projeto.
   master_key: os.environ/LITELLM_MASTER_KEY
-  # Salt para criptografar credenciais (usado quando há DATABASE_URL).
-  # database_url: os.environ/DATABASE_URL   # descomente p/ persistir keys/logs
+  # Persistência de virtual keys/logs no Postgres (database `litellm`).
+  # A DATABASE_URL vem do .env e é injetada no container pelo docker-compose.
+  database_url: os.environ/DATABASE_URL
+  # Guarda modelos/keys no banco (exige DATABASE_URL válido).
+  store_model_in_db: true
 
 litellm_settings:
   # Guard de VRAM (single-GPU): serializa cargas pesadas globalmente.
