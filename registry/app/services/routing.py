@@ -33,7 +33,7 @@ def build_litellm_params(
         return "openai/large-v3", "http://whisper:9000/v1", mode
 
     if purpose == "image":
-        return "openai/flux-schnell", "http://images:8080/v1", mode
+        return "openai/flux-dev", "http://images:8080/v1", mode
 
     model = f"ollama_chat/{ollama_model_name}"
     from app.config import settings

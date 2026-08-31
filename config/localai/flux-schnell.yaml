@@ -1,11 +1,9 @@
 # DEFINIÇÃO REAL de modelo do LocalAI (backend diffusers) — servida em /models.
 # NÃO confundir com config/models/ (catálogo/documentação, montado em /catalog:ro).
 #
-# PADRÃO DO PROJETO para image-thumbs. Motivo: o consumidor (ex.: CutCast)
-# desenha o texto do título por cima da imagem (bake via PIL), então a
-# renderização de texto pelo modelo não é necessária aqui. FLUX.1-schnell (12B,
-# distilado, Apache-2.0) CABE no 24GB do RTX 4090 e é rápido/confiável — ao
-# contrário do Qwen-Image (~20B), pesado/arriscado em f16 no single-GPU.
+# ALTERNATIVA (não é o padrão — ver flux-dev.yaml). FLUX.1-schnell (12B,
+# distilado, Apache-2.0) é mais rápido (4 passos) e permitido em uso comercial.
+# Útil quando a qualidade do dev não é necessária ou a licença exige comercial.
 # Config conferida no PR de suporte a FLUX do LocalAI (mudler/LocalAI#3129):
 # pipeline_type FluxPipeline, cfg_scale 0, step 4.
 #

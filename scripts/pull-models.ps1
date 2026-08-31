@@ -39,15 +39,15 @@ if ($whisperRunning) {
 }
 
 # --- LocalAI: modelo de imagem (preload OPCIONAL, não fatal) ---------------
-# A definição real está em config/localai/qwen-image.yaml (montado em /models).
+# A definição real está em config/localai/flux-dev.yaml (montado em /models).
 # Este passo apenas AQUECE o download dos pesos com uma geração trivial.
 # Pulável se você não for usar imagem agora (perfil image inativo).
 $ImagesPort = if ($env:IMAGES_PORT) { $env:IMAGES_PORT } else { '18002' }
 $imagesRunning = (docker ps --format '{{.Names}}') -contains $ImagesContainer
 if ($imagesRunning) {
-  Log 'Aquecendo o modelo de imagem (qwen-image) via POST trivial...'
-  curl.exe -fsS -X POST "http://localhost:$ImagesPort/v1/images/generations" -H 'Content-Type: application/json' -d '{"model":"qwen-image","prompt":"warmup","size":"256x256","n":1}' -o $null 2>$null
-  if ($LASTEXITCODE -eq 0) { Log 'modelo de imagem aquecido.' } else { Warn 'aquecimento de imagem falhou (pulável se não usar imagem agora; ou troque para flux-schnell).' }
+  Log 'Aquecendo o modelo de imagem (flux-dev) via POST trivial...'
+  curl.exe -fsS -X POST "http://localhost:$ImagesPort/v1/images/generations" -H 'Content-Type: application/json' -d '{"model":"flux-dev","prompt":"warmup","size":"256x256","n":1}' -o $null 2>$null
+  if ($LASTEXITCODE -eq 0) { Log 'modelo de imagem aquecido.' } else { Warn 'aquecimento de imagem falhou (pulável se não usar imagem agora; verifique HUGGING_FACE_HUB_TOKEN).' }
 } else {
   Warn "container images não está rodando (perfil image inativo); pule ou rode 'task up-all' / 'make up-all'."
 }

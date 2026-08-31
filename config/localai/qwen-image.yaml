@@ -3,11 +3,11 @@
 #
 # ALTERNATIVA (não é o padrão). Melhor para TEXTO RENDERIZADO PELO MODELO dentro
 # da imagem — mas ~20B, exige mais VRAM e é arriscado em f16 no single RTX 4090.
-# O padrão do projeto é flux-schnell (ver config/localai/flux-schnell.yaml).
+# O padrão do projeto é flux-dev (ver config/localai/flux-dev.yaml).
 # Licença: Qwen-Image (uso comercial permitido, com restrições — verificar LICENSE).
 #
 # PARA USAR ESTE MODELO: no gateway (config/gateway/config.yaml), na rota
-# image-thumbs, troque `model: openai/flux-schnell` por `model: openai/qwen-image`
+# image-thumbs, troque `model: openai/flux-dev` por `model: openai/qwen-image`
 # e reinicie o gateway (docker compose restart gateway).
 #
 # Formato conferido na doc do LocalAI (backend diffusers) — localai.io.
@@ -28,7 +28,7 @@ parameters:
 diffusers:
   cuda: true
   # Classe da pipeline no diffusers. Se a sua versão não tiver QwenImagePipeline,
-  # troque para flux-schnell (FluxPipeline) — ver comentário no topo.
+  # troque para flux-dev ou flux-schnell (FluxPipeline) — ver comentário no topo.
   pipeline_type: QwenImagePipeline
   # Guidance scale. Ajuste se as imagens saírem "lavadas" ou saturadas.
   cfg_scale: 4.0

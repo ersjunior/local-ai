@@ -1,0 +1,20 @@
+# CATÁLOGO — fonte de verdade / documentação de um modelo.
+# A definição REAL servida pelo LocalAI está em config/localai/flux-dev.yaml.
+# Ao adicionar um arquivo aqui, adicione TAMBÉM a rota em
+# config/gateway/config.yaml (model_list). O scripts/add-model.sh ajuda.
+
+logical_name: image-thumbs           # nome lógico ATIVO (padrão do projeto)
+backend: localai
+model_id: flux-dev
+alias: ""
+params:
+  size: "1024x1024"
+  steps: 28
+  cfg_scale: 3.5
+vram_estimate: "~cabe no 24GB (12B, low_vram) — modelo de imagem PADRÃO"
+license: "FLUX.1-dev License (NON-COMMERCIAL). Repo HF é gated: requer HUGGING_FACE_HUB_TOKEN."
+notes: >
+  PADRÃO do projeto para image-thumbs. Melhor qualidade que flux-schnell (distilado).
+  Licença NON-COMMERCIAL — não usar em produto pago. Alternativas comerciais:
+  image-flux-schnell.yaml (Apache-2.0, mais rápido) ou image-qwen.yaml.
+enabled: true

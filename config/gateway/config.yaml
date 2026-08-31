@@ -72,14 +72,15 @@ model_list:
   # LocalAI é OpenAI-compatível em /v1/images/generations.
   - model_name: image-thumbs
     litellm_params:
-      model: openai/flux-schnell      # PADRÃO: cabe no 24GB, rápido (4 passos), Apache-2.0
-      # model: openai/qwen-image      # alternativa: melhor texto na imagem, porém ~20B (pesado no 4090)
+      model: openai/flux-dev        # PADRÃO: melhor qualidade (FLUX.1-dev, non-commercial)
+      # model: openai/flux-schnell  # alternativa: mais rápido, Apache-2.0 comercial
+      # model: openai/qwen-image    # alternativa: melhor texto na imagem, ~20B (pesado no 4090)
       api_base: http://images:8080/v1
       api_key: "dummy"
     model_info:
       mode: image_generation
       metadata:
-        catalog: image-flux-schnell.yaml
+        catalog: image-flux-dev.yaml
 
 # Modelos dinâmicos (registry): apps externas registam rotas via POST /registry/v1/models.
 # O worker chama POST /model/new no gateway (store_model_in_db: true) — sem reinício.

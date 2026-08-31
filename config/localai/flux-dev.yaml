@@ -1,0 +1,29 @@
+# DEFINIÇÃO REAL de modelo do LocalAI (backend diffusers) — servida em /models.
+# NÃO confundir com config/models/ (catálogo/documentação, montado em /catalog:ro).
+#
+# PADRÃO DO PROJETO para image-thumbs. FLUX.1-dev (12B) oferece melhor qualidade
+# que o schnell distilado; com low_vram cabe no 24GB do RTX 4090.
+# Config baseada no suporte a FLUX do LocalAI (mudler/LocalAI#3129):
+# pipeline_type FluxPipeline, cfg_scale 3.5, step 28.
+#
+# ATENÇÃO — LICENÇA: FLUX.1-dev é NON-COMMERCIAL (não usar em produto pago).
+# ATENÇÃO — HF GATED: aceite os termos em black-forest-labs/FLUX.1-dev e exporte
+# HUGGING_FACE_HUB_TOKEN/HF_TOKEN para o container baixar os pesos.
+name: flux-dev
+backend: diffusers
+
+f16: true
+cuda: true
+# Reduz o uso de VRAM (offload) — útil no orçamento single-4090.
+low_vram: true
+
+step: 28
+
+parameters:
+  model: black-forest-labs/FLUX.1-dev
+
+diffusers:
+  cuda: true
+  pipeline_type: FluxPipeline
+  cfg_scale: 3.5
+  enable_parameters: "num_inference_steps"

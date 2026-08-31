@@ -306,26 +306,26 @@ VIRTUAL_KEY=sk-... make registry-examples
 | `chat-gpt-oss`   | ollama  | gpt-oss:20b          | Apache-2.0         | Sim       |
 | `vision-default` | ollama  | qwen3-vl:7b          | Qwen (restrições)  | Sim*      |
 | `whisper`        | whisper | large-v3             | MIT                | Sim       |
-| `image-thumbs`   | localai | **flux-schnell** (padrão) | Apache-2.0    | Sim       |
+| `image-thumbs`   | localai | **flux-dev** (padrão)     | FLUX.1-dev (non-commercial) | **Não** |
+| `image-thumbs`   | localai | flux-schnell (alternativa)| Apache-2.0    | Sim       |
 | `image-thumbs`   | localai | qwen-image (alternativa)  | Qwen-Image    | Sim*      |
 
-\* verificar as restrições da licença Qwen. **Não-comerciais** (não usar por
-padrão): FLUX.1-dev, FLUX.2-dev.
+\* verificar as restrições da licença Qwen.
 
-### Modelo de imagem (padrão: FLUX.1-schnell)
+### Modelo de imagem (padrão: FLUX.1-dev)
 
-O padrão de `image-thumbs` é **flux-schnell** (12B, distilado, Apache-2.0):
-cabe no 24 GB do RTX 4090 e é rápido (4 passos). Como o consumidor desenha o
-texto do título por cima da imagem (bake via PIL), a renderização de texto do
-modelo não é necessária — por isso o Qwen-Image (~20B, pesado no single-GPU)
-fica só como **alternativa documentada** (`config/localai/qwen-image.yaml`).
+O padrão de `image-thumbs` é **flux-dev** (`black-forest-labs/FLUX.1-dev`, 12B):
+melhor qualidade que o schnell distilado e cabe no 24 GB do RTX 4090 com
+`low_vram` (28 passos, cfg 3.5).
 
-> **FLUX.1-schnell é gated no HuggingFace.** Antes do primeiro `up` do perfil
+> **Licença NON-COMMERCIAL.** Não use em produto pago. Para uso comercial,
+> troque para **flux-schnell** (Apache-2.0, 4 passos) — ver
+> [docs/adding-a-model.md](docs/adding-a-model.md).
+
+> **FLUX.1-dev é gated no HuggingFace.** Antes do primeiro `up` do perfil
 > `image`: aceite os termos em
-> [huggingface.co/black-forest-labs/FLUX.1-schnell](https://huggingface.co/black-forest-labs/FLUX.1-schnell)
-> e defina `HUGGING_FACE_HUB_TOKEN` no `.env`. Para usar o Qwen-Image no lugar,
-> troque uma linha na rota `image-thumbs` do gateway (ver
-> [docs/adding-a-model.md](docs/adding-a-model.md)).
+> [huggingface.co/black-forest-labs/FLUX.1-dev](https://huggingface.co/black-forest-labs/FLUX.1-dev)
+> e defina `HUGGING_FACE_HUB_TOKEN` no `.env`.
 
 ---
 

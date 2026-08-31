@@ -7,7 +7,7 @@
 #   - config/models/  = CATÁLOGO (documentação). Montado em /catalog:ro. NÃO é
 #     lido pelo LocalAI como modelo — serve só de fonte de verdade/docs.
 #   - config/localai/ = DEFINIÇÃO REAL servida pelo LocalAI. Montado em /models
-#     (leitura/escrita). Contém os .yaml (qwen-image, flux-schnell) que o
+#     (leitura/escrita). Contém os .yaml (flux-dev, flux-schnell, qwen-image) que o
 #     LocalAI carrega de fato; os PESOS baixados também caem aqui (ignorados
 #     pelo git — ver .gitignore).
 #
@@ -33,7 +33,7 @@ services:
       MODELS_PATH: "/models"
       # Threads e opções podem ser ajustadas conforme o modelo.
       DEBUG: "${LOCALAI_DEBUG:-false}"
-      # Token HF para modelos gated (ex.: FLUX.1-schnell). Vazio = só modelos abertos.
+      # Token HF para modelos gated (ex.: FLUX.1-dev, FLUX.1-schnell). Vazio = só modelos abertos.
       HF_TOKEN: "${HUGGING_FACE_HUB_TOKEN:-}"
     volumes:
       # DEFINIÇÃO REAL (bind mount rw): .yaml carregados pelo LocalAI + pesos baixados.

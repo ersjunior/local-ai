@@ -26,25 +26,27 @@ Há **dois** diretórios com papéis distintos — não confundir:
   `diffusers`). Os pesos baixados do HuggingFace também caem aqui e são
   ignorados pelo git (ver `.gitignore`).
 
-Hoje existem duas definições reais de imagem:
-- `config/localai/flux-schnell.yaml` — **PADRÃO** (`image-thumbs → flux-schnell`),
-  Apache-2.0. Motivo: o texto do título é **baked pelo app** (PIL), então não
-  precisamos da renderização de texto do modelo; FLUX.1-schnell (12B, distilado)
-  cabe no 24GB do RTX 4090 e é rápido/confiável.
+Hoje existem três definições reais de imagem:
+- `config/localai/flux-dev.yaml` — **PADRÃO** (`image-thumbs → flux-dev`),
+  melhor qualidade. FLUX.1-dev (12B) cabe no 24GB do RTX 4090 com `low_vram`.
+  **Licença NON-COMMERCIAL** — não usar em produto pago.
+- `config/localai/flux-schnell.yaml` — **alternativa comercial** (Apache-2.0):
+  distilado, 4 passos, mais rápido, qualidade inferior ao dev.
 - `config/localai/qwen-image.yaml` — **alternativa** (melhor texto renderizado
   pelo modelo, porém ~20B, pesado/arriscado em f16 no single-GPU).
 
-**FLUX.1-schnell é gated no HuggingFace**: aceite os termos em
-[huggingface.co/black-forest-labs/FLUX.1-schnell](https://huggingface.co/black-forest-labs/FLUX.1-schnell)
+**FLUX.1-dev é gated no HuggingFace**: aceite os termos em
+[huggingface.co/black-forest-labs/FLUX.1-dev](https://huggingface.co/black-forest-labs/FLUX.1-dev)
 e defina `HUGGING_FACE_HUB_TOKEN` no `.env` **antes do primeiro `up` do perfil
-image**. Licença dos pesos: Apache-2.0.
+image**. Licença dos pesos: **non-commercial**.
 
-Para usar o **qwen-image** no lugar, troque uma linha em
-`config/gateway/config.yaml`, na rota `image-thumbs`:
+Para usar o **flux-schnell** (comercial, mais rápido) ou **qwen-image**, troque
+uma linha em `config/gateway/config.yaml`, na rota `image-thumbs`:
 
 ```yaml
-      # model: openai/flux-schnell      # comente esta
-      model: openai/qwen-image          # descomente esta
+      # model: openai/flux-dev        # comente esta (padrão)
+      model: openai/flux-schnell      # alternativa comercial
+      # model: openai/qwen-image      # alternativa: melhor texto na imagem
 ```
 
 e reinicie o gateway (`docker compose restart gateway`).
@@ -142,6 +144,7 @@ Adicione `supports_vision: true` em `model_info` no bloco colado.
 | Qwen-Image         | Qwen-Image License              | Sim*       |
 | gpt-oss-20b        | Apache-2.0                      | Sim        |
 | whisper large-v3   | MIT                             | Sim        |
-| FLUX.1-dev / 2-dev | Non-commercial                  | **Não**    |
+| FLUX.1-dev         | Non-commercial (padrão ativo)   | **Não**    |
+| FLUX.1-schnell     | Apache-2.0                      | Sim        |
 
 \* verificar as restrições específicas da licença Qwen antes de usar em produto pago.

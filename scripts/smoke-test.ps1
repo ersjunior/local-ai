@@ -77,7 +77,7 @@ try {
     Pass 'image-thumbs (via gateway)'
   } else {
     $imgDirect = Join-Path $Tmp 'image-direct.json'
-    '{"model":"qwen-image","prompt":"a small red circle on white background","size":"512x512","n":1}' | Set-Content -Path $imgDirect -Encoding ascii
+    '{"model":"flux-dev","prompt":"a small red circle on white background","size":"512x512","n":1}' | Set-Content -Path $imgDirect -Encoding ascii
     curl.exe -fsS -X POST "$ImagesDirect/v1/images/generations" -H $Json --data "@$imgDirect" -o $null 2>$null
     if ($LASTEXITCODE -eq 0) { Pass "image-thumbs (rota direta $ImagesDirect)" } else { Fail 'image-thumbs' }
   }

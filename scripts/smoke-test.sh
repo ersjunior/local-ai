@@ -74,7 +74,7 @@ if curl -fsS -X POST "$BASE/images/generations" -H "$AUTH" -H "$JSON" -d '{
 }' >/dev/null 2>&1; then
   pass "image-thumbs (via gateway)"
 elif curl -fsS -X POST "$IMAGES_DIRECT/v1/images/generations" -H "$JSON" -d '{
-  "model": "qwen-image",
+  "model": "flux-dev",
   "prompt": "a small red circle on white background",
   "size": "512x512",
   "n": 1

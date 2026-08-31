@@ -3,7 +3,7 @@
 # Ao adicionar um arquivo aqui, adicione TAMBÉM a rota em
 # config/gateway/config.yaml (model_list). O scripts/add-model.sh ajuda.
 
-logical_name: image-thumbs           # nome lógico ATIVO (padrão do projeto)
+logical_name: image-thumbs           # ALTERNATIVA ao padrão (flux-dev)
 backend: localai
 model_id: flux-schnell
 alias: ""
@@ -11,10 +11,10 @@ params:
   size: "1024x1024"
   steps: 4                           # schnell é distilado: 4 passos bastam
   cfg_scale: 0
-vram_estimate: "~cabe no 24GB (12B, distilado, low_vram) — modelo de imagem PADRÃO"
+vram_estimate: "~cabe no 24GB (12B, distilado, low_vram)"
 license: "Apache-2.0 (FLUX.1-schnell). Repo HF é gated: requer HUGGING_FACE_HUB_TOKEN."
 notes: >
-  PADRÃO do projeto para image-thumbs. Texto do título é baked pelo app (PIL),
-  então não precisamos da renderização de texto do Qwen-Image. FLUX.1-schnell
-  cabe e é confiável no single RTX 4090. Alternativa: image-qwen.yaml.
-enabled: true
+  ALTERNATIVA comercial ao flux-dev (Apache-2.0). Mais rápido (4 passos), qualidade
+  inferior ao dev. Para ativar, troque a rota image-thumbs no gateway para
+  openai/flux-schnell. Padrão ativo: image-flux-dev.yaml.
+enabled: false
