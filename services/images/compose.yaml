@@ -3,6 +3,12 @@
 # Backend de imagem -> LocalAI (Diffusers, CUDA).
 # Expõe /v1/images/generations (OpenAI-compatível).
 #
+# BACKENDS OCI (diffusers):
+#   Na imagem localai/localai:latest-gpu-nvidia-cuda-12 os backends NÃO vêm embutidos.
+#   O backend cuda12-diffusers é uma imagem OCI à parte, instalada em /backends.
+#   LOCALAI_EXTERNAL_BACKENDS=cuda12-diffusers faz o download automático no arranque.
+#   O volume localai_backends persiste /backends entre recreates do container.
+#
 # CATÁLOGO vs DEFINIÇÃO REAL (importante):
 #   - config/models/  = CATÁLOGO (documentação). Montado em /catalog:ro. NÃO é
 #     lido pelo LocalAI como modelo — serve só de fonte de verdade/docs.
@@ -29,27 +35,28 @@ services:
     ports:
       - "${IMAGES_PORT:-18002}:8080"
     environment:
-      # Diretório de modelos dentro do container.
       MODELS_PATH: "/models"
-      # Threads e opções podem ser ajustadas conforme o modelo.
       DEBUG: "${LOCALAI_DEBUG:-false}"
-      # Token HF para modelos gated (ex.: FLUX.1-dev, FLUX.1-schnell). Vazio = só modelos abertos.
+      # Instala automaticamente o backend diffusers para CUDA 12 (OCI em /backends).
+      LOCALAI_EXTERNAL_BACKENDS: "${LOCALAI_EXTERNAL_BACKENDS:-cuda12-diffusers}"
+      # Token HF para modelos gated (ex.: FLUX.1-dev, FLUX.1-schnell). Obrigatório para flux-dev.
       HF_TOKEN: "${HUGGING_FACE_HUB_TOKEN:-}"
+      HUGGING_FACE_HUB_TOKEN: "${HUGGING_FACE_HUB_TOKEN:-}"
     volumes:
-      # DEFINIÇÃO REAL (bind mount rw): .yaml carregados pelo LocalAI + pesos baixados.
-      # Versionado no git (só os .yaml; pesos ignorados via .gitignore).
       - ../../config/localai:/models
-      # Monta o catálogo apenas como REFERÊNCIA/documentação (somente leitura).
       - ../../config/models:/catalog:ro
+      # Persiste backends OCI (cuda12-diffusers) — evita reinstalar a cada recreate.
+      - localai_backends:/backends
     networks:
       - localai_net
     healthcheck:
-      # LocalAI expõe /readyz quando pronto.
+      # /readyz responde quando o processo está up; o backend diffusers pode ainda
+      # estar a descarregar na 1ª subida (ver start_period).
       test: ["CMD-SHELL", "curl -fsS http://localhost:8080/readyz >/dev/null 2>&1 || exit 1"]
       interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 60s
+      timeout: 15s
+      retries: 10
+      start_period: 300s
     deploy:
       resources:
         reservations:
@@ -58,7 +65,9 @@ services:
               count: all
               capabilities: [gpu]
 
-# /models agora é um bind mount (config/localai) — sem volume nomeado aqui.
+volumes:
+  localai_backends:
+
 networks:
   localai_net:
     external: true

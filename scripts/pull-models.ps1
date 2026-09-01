@@ -39,15 +39,31 @@ if ($whisperRunning) {
 }
 
 # --- LocalAI: modelo de imagem (preload OPCIONAL, não fatal) ---------------
-# A definição real está em config/localai/flux-dev.yaml (montado em /models).
-# Este passo apenas AQUECE o download dos pesos com uma geração trivial.
-# Pulável se você não for usar imagem agora (perfil image inativo).
 $ImagesPort = if ($env:IMAGES_PORT) { $env:IMAGES_PORT } else { '18002' }
+$ImageWarmupTimeout = if ($env:IMAGE_WARMUP_TIMEOUT) { $env:IMAGE_WARMUP_TIMEOUT } else { '600' }
 $imagesRunning = (docker ps --format '{{.Names}}') -contains $ImagesContainer
 if ($imagesRunning) {
-  Log 'Aquecendo o modelo de imagem (flux-dev) via POST trivial...'
-  curl.exe -fsS -X POST "http://localhost:$ImagesPort/v1/images/generations" -H 'Content-Type: application/json' -d '{"model":"flux-dev","prompt":"warmup","size":"256x256","n":1}' -o $null 2>$null
-  if ($LASTEXITCODE -eq 0) { Log 'modelo de imagem aquecido.' } else { Warn 'aquecimento de imagem falhou (pulável se não usar imagem agora; verifique HUGGING_FACE_HUB_TOKEN).' }
+  $ensureScript = Join-Path $PSScriptRoot 'ensure-backends.ps1'
+  & powershell -NoProfile -ExecutionPolicy Bypass -File $ensureScript
+  if ($LASTEXITCODE -ne 0) {
+    Warn 'backend cuda12-diffusers não instalado — aguarde o arranque do LocalAI ou defina LOCALAI_EXTERNAL_BACKENDS.'
+  } else {
+    Log "Aquecendo o modelo de imagem (flux-dev) via POST trivial (timeout ${ImageWarmupTimeout}s)..."
+    $tmpOut = Join-Path $env:TEMP ("localai-warmup-" + [guid]::NewGuid().ToString('N'))
+    $httpCode = & curl.exe --max-time $ImageWarmupTimeout -sS -o $tmpOut -w '%{http_code}' `
+      -X POST "http://localhost:$ImagesPort/v1/images/generations" `
+      -H 'Content-Type: application/json' `
+      -d '{"model":"flux-dev","prompt":"warmup","size":"256x256","n":1}' 2>$null
+    Remove-Item -Force $tmpOut -ErrorAction SilentlyContinue
+    if ($httpCode -eq '200' -or $httpCode -eq '201') {
+      Log 'modelo de imagem aquecido.'
+    } elseif ($httpCode -eq '401' -or $httpCode -eq '403') {
+      Warn "aquecimento falhou (HTTP $httpCode): token HF inválido ou termos FLUX.1-dev não aceites no HuggingFace."
+      Warn 'Defina HUGGING_FACE_HUB_TOKEN no .env e aceite https://huggingface.co/black-forest-labs/FLUX.1-dev'
+    } else {
+      Warn "aquecimento de imagem falhou (HTTP $httpCode). Verifique logs: docker compose logs images"
+    }
+  }
 } else {
   Warn "container images não está rodando (perfil image inativo); pule ou rode 'task up-all' / 'make up-all'."
 }

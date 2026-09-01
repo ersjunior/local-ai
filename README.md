@@ -93,10 +93,11 @@ Os passos de `pull`/`create-models`/`smoke` são scripts — use `.sh`
 
 ## Quickstart por SO
 
-Os passos são os mesmos em todos: **net → build → up → pull → create-models → smoke**.
+Os passos são os mesmos em todos: **net → build → up-all → ensure-backends → pull → create-models → smoke**.
 Antes: `cp .env.example .env` (Windows PowerShell: `Copy-Item .env.example .env`)
 e ajuste `LITELLM_MASTER_KEY`, `LITELLM_SALT_KEY`, `POSTGRES_*`, `LITELLM_DB_*`,
-`DATABASE_URL`, `REGISTRY_DB_*` e `REGISTRY_DATABASE_URL` (senhas devem bater).
+`DATABASE_URL`, `REGISTRY_DB_*`, `REGISTRY_DATABASE_URL` e **`HUGGING_FACE_HUB_TOKEN`**
+(obrigatório para imagem FLUX.1-dev no perfil `image`).
 
 > Na **primeira subida** com Postgres/registry: se o volume `local-ai_localai_pg`
 > já existia antes destes serviços, crie o database `registry` manualmente — ver
@@ -106,8 +107,9 @@ e ajuste `LITELLM_MASTER_KEY`, `LITELLM_SALT_KEY`, `POSTGRES_*`, `LITELLM_DB_*`,
 
 ```bash
 cp .env.example .env
-make build         # 1ª vez: constrói imagem do registry
-make up            # ou: task up
+make build         # 1ª vez: constrói imagem do registry (perfil core)
+make up-all        # core + image (LocalAI / FLUX)
+make ensure-backends  # aguarda backend cuda12-diffusers (opcional)
 make pull          # ou: task pull
 make create-models # ou: task create-models
 make smoke         # ou: task smoke
@@ -153,6 +155,7 @@ make smoke         # ou: task smoke
 | Subir core              | `make up`          | `task up`          | `docker compose --profile core up -d`                            |
 | Build registry (1ª vez) | `make build`       | `task build`       | `docker compose --profile core build registry`                   |
 | Subir core + imagem     | `make up-all`      | `task up-all`      | `docker compose --profile core --profile image up -d`            |
+| Aguardar backend imagem | `make ensure-backends` | `task ensure-backends` | `scripts/ensure-backends.sh` ou `.ps1`                     |
 | Subir perf (vLLM)       | `make perf`        | `task perf`        | `docker compose --profile perf up -d`                            |
 | Validar config          | `make config`      | `task config`      | `docker compose --profile core --profile image --profile perf config` |
 | Logs                    | `make logs`        | `task logs`        | `docker compose logs -f`                                         |
@@ -376,6 +379,23 @@ Detalhes em [docs/adding-a-model.md](docs/adding-a-model.md).
 - **Registry DB não existe** (volume Postgres antigo): crie manualmente — ver
   [REGISTRY.md](docs/REGISTRY.md#banco-de-dados).
 
+- **Registry não sobe / :4010 inacessível**: rode `make build` antes do primeiro
+  `make up` (imagem `registry` é local). Verifique `docker compose ps`.
+
+- **Imagem falha (`Backend not found: diffusers`)**: o LocalAI precisa do backend
+  OCI `cuda12-diffusers` em `/backends`. Já configurado via `LOCALAI_EXTERNAL_BACKENDS`
+  + volume `localai_backends`. Aguarde a 1ª subida (~5 min) ou `make ensure-backends`.
+  Ver [docs/troubleshooting-images.md](docs/troubleshooting-images.md).
+
+- **HF 401 ao baixar FLUX**: defina `HUGGING_FACE_HUB_TOKEN` e aceite os termos em
+  [FLUX.1-dev](https://huggingface.co/black-forest-labs/FLUX.1-dev).
+
+- **Gateway 503 em `image-thumbs`**: cooldown após falhas no LocalAI — corrija backend/HF
+  e reinicie `images` + `gateway`.
+
+- **Gateway unhealthy**: `/health/liveliness` não exige auth (401 em `/health` é esperado).
+  Aguarde o Postgres ou aumente `start_period` no compose.
+
 - **Bind mounts no Windows**: os caminhos relativos dos compose
   (`../../config/models`, `../../config/ollama`) funcionam no Docker Desktop;
   use sempre `/` nos paths (nunca `\`).
@@ -388,6 +408,7 @@ Detalhes em [docs/adding-a-model.md](docs/adding-a-model.md).
 - [Adicionando um modelo](docs/adding-a-model.md)
 - [Integrando um projeto](docs/integrating-a-project.md)
 - [Model Registry — API de modelos dinâmicos](docs/REGISTRY.md)
+- [Troubleshooting — geração de imagem (FLUX / LocalAI)](docs/troubleshooting-images.md)
 
 ## Licença
 

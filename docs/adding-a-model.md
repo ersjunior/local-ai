@@ -52,7 +52,8 @@ uma linha em `config/gateway/config.yaml`, na rota `image-thumbs`:
 e reinicie o gateway (`docker compose restart gateway`).
 
 O `make smoke` / `scripts/smoke-test.ps1` valida a rota `image-thumbs` (✅/❌).
-Se der **❌**, verifique o token HF (FLUX gated) ou troque de modelo conforme acima.
+Se der **❌**, verifique backend diffusers, token HF ou troque de modelo conforme acima.
+Ver [troubleshooting-images.md](troubleshooting-images.md).
 
 > `images.edit`/img2img pode não existir na API do LocalAI — o app cai para
 > `images.generate`. Para edição fiel, planeje um serviço ComfyUI (TODO).

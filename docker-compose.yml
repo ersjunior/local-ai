@@ -61,11 +61,12 @@ services:
     networks:
       - localai_net
     healthcheck:
+      # /health/liveliness não exige auth (diferente de /health, que retorna 401).
       test: ["CMD-SHELL", "curl -fsS http://localhost:4000/health/liveliness >/dev/null 2>&1 || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 30s
+      interval: 15s
+      timeout: 15s
+      retries: 10
+      start_period: 120s
 
 # Rede compartilhada. É `external` para que consumidores em Docker
 # (outros compose) possam se conectar pelo nome de serviço.

@@ -38,16 +38,27 @@ fi
 
 # --- LocalAI: modelo de imagem (preload OPCIONAL, não fatal) ---------------
 # A definição real está em config/localai/flux-dev.yaml (montado em /models).
-# Este passo apenas AQUECE o download dos pesos com uma geração trivial.
-# Pulável se você não for usar imagem agora (perfil image inativo).
+# Requer backend OCI cuda12-diffusers (LOCALAI_EXTERNAL_BACKENDS) + HF token.
 IMAGES_PORT="${IMAGES_PORT:-18002}"
+IMAGE_WARMUP_TIMEOUT="${IMAGE_WARMUP_TIMEOUT:-600}"
 if docker ps --format '{{.Names}}' | grep -q "^${IMAGES_CONTAINER}$"; then
-  log "Aquecendo o modelo de imagem (flux-dev) via POST trivial..."
-  curl -fsS -X POST "http://localhost:${IMAGES_PORT}/v1/images/generations" \
-    -H "Content-Type: application/json" \
-    -d '{"model":"flux-dev","prompt":"warmup","size":"256x256","n":1}' >/dev/null 2>&1 \
-    && log "modelo de imagem aquecido." \
-    || warn "aquecimento de imagem falhou (pulável se não usar imagem agora; verifique HUGGING_FACE_HUB_TOKEN)."
+  if ! bash "$(dirname "$0")/ensure-backends.sh"; then
+    warn "backend cuda12-diffusers não instalado — aguarde o arranque do LocalAI ou defina LOCALAI_EXTERNAL_BACKENDS."
+  else
+    log "Aquecendo o modelo de imagem (flux-dev) via POST trivial (timeout ${IMAGE_WARMUP_TIMEOUT}s)..."
+    http_code="$(curl --max-time "$IMAGE_WARMUP_TIMEOUT" -sS -o /dev/null -w '%{http_code}' \
+      -X POST "http://localhost:${IMAGES_PORT}/v1/images/generations" \
+      -H "Content-Type: application/json" \
+      -d '{"model":"flux-dev","prompt":"warmup","size":"256x256","n":1}' 2>/dev/null || echo "000")"
+    if [ "$http_code" = "200" ] || [ "$http_code" = "201" ]; then
+      log "modelo de imagem aquecido."
+    elif [ "$http_code" = "401" ] || [ "$http_code" = "403" ]; then
+      warn "aquecimento falhou (HTTP $http_code): token HF inválido ou termos FLUX.1-dev não aceites no HuggingFace."
+      warn "Defina HUGGING_FACE_HUB_TOKEN no .env e aceite https://huggingface.co/black-forest-labs/FLUX.1-dev"
+    else
+      warn "aquecimento de imagem falhou (HTTP $http_code). Verifique logs: docker compose logs images"
+    fi
+  fi
 else
   warn "container images não está rodando (perfil image inativo); pule ou rode 'make up-all'."
 fi

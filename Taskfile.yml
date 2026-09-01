@@ -78,6 +78,14 @@ tasks:
       - cmd: bash scripts/pull-models.sh
         platforms: [linux, darwin]
 
+  ensure-backends:
+    desc: Aguarda backend cuda12-diffusers no LocalAI (perfil image)
+    cmds:
+      - cmd: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/ensure-backends.ps1
+        platforms: [windows]
+      - cmd: bash scripts/ensure-backends.sh
+        platforms: [linux, darwin]
+
   create-models:
     desc: Cria aliases do Ollama a partir dos Modelfiles (aplica params do catálogo)
     cmds:

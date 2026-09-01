@@ -17,7 +17,7 @@ include .env
 export
 endif
 
-.PHONY: net up up-all perf down logs pull create-models smoke key add-model config help build registry-test registry-examples
+.PHONY: net up up-all perf down logs pull create-models smoke key add-model config help build registry-test registry-examples ensure-backends
 
 help: ## Lista os alvos disponíveis
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
@@ -48,6 +48,9 @@ config: ## Valida a composição (docker compose config)
 
 pull: ## Baixa os pesos dos modelos (scripts/pull-models.sh)
 	bash scripts/pull-models.sh
+
+ensure-backends: ## Aguarda backend cuda12-diffusers no LocalAI (perfil image)
+	bash scripts/ensure-backends.sh
 
 create-models: ## Cria aliases do Ollama a partir dos Modelfiles (aplica params do catálogo)
 	docker exec localai-ollama ollama create cutcast-cuts   -f /modelfiles/cutcast-cuts.Modelfile
