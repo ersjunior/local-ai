@@ -14,12 +14,7 @@ function Warn ($m) { Write-Host "[warn] $m" -ForegroundColor Yellow }
 # --- Ollama: LLMs + VLM ----------------------------------------------------
 Log 'Baixando modelos do Ollama (isso pode demorar)...'
 docker exec $OllamaContainer ollama pull qwen3:32b
-docker exec $OllamaContainer ollama pull qwen3-vl:7b
-
-Log 'Modelo opcional Apache-2.0 (gpt-oss:20b). Ctrl-C para pular em 5s...'
-Start-Sleep -Seconds 5
-docker exec $OllamaContainer ollama pull gpt-oss:20b
-if ($LASTEXITCODE -ne 0) { Warn 'gpt-oss:20b pulado.' }
+docker exec $OllamaContainer ollama pull qwen3-vl:8b
 
 # --- Aliases lógicos (usam os Modelfiles montados em /modelfiles) ----------
 Log 'Criando aliases lógicos (cutcast-cuts, cutcast-vision) com parâmetros...'

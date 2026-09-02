@@ -61,12 +61,16 @@ services:
     networks:
       - localai_net
     healthcheck:
-      # /health/liveliness não exige auth (diferente de /health, que retorna 401).
-      test: ["CMD-SHELL", "curl -fsS http://localhost:4000/health/liveliness >/dev/null 2>&1 || exit 1"]
+      # /health/liveliness não exige auth. A imagem LiteLLM não inclui curl — usa python.
+      test:
+        [
+          "CMD-SHELL",
+          "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:4000/health/liveliness', timeout=5)\"",
+        ]
       interval: 15s
       timeout: 15s
       retries: 10
-      start_period: 120s
+      start_period: 180s
 
 # Rede compartilhada. É `external` para que consumidores em Docker
 # (outros compose) possam se conectar pelo nome de serviço.

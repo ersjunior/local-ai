@@ -15,10 +15,6 @@ log "Baixando modelos do Ollama (isso pode demorar)..."
 docker exec "$OLLAMA_CONTAINER" ollama pull qwen3:32b
 docker exec "$OLLAMA_CONTAINER" ollama pull qwen3-vl:8b
 
-log "Modelo opcional Apache-2.0 (gpt-oss:20b). Ctrl-C para pular em 5s..."
-sleep 5 || true
-docker exec "$OLLAMA_CONTAINER" ollama pull gpt-oss:20b || warn "gpt-oss:20b pulado."
-
 # --- Aliases lógicos (usados nas rotas do gateway) -------------------------
 # Usa `ollama create` a partir dos Modelfiles para aplicar temperature/num_ctx
 # do catálogo (o `ollama cp` copiaria o base sem esses parâmetros).

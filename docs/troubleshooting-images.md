@@ -28,6 +28,8 @@ make smoke
 | `Backend not found: backend="diffusers"` | Backend OCI não instalado em `/backends` | `LOCALAI_EXTERNAL_BACKENDS=cuda12-diffusers` no compose + volume `localai_backends:/backends`. Aguarde `start_period` (300s) ou `make ensure-backends` |
 | HF **401/403** ao baixar FLUX | Token em falta ou termos não aceites | Defina `HUGGING_FACE_HUB_TOKEN` e aceite a licença no HuggingFace |
 | Gateway **503** em `image-thumbs` | Cooldown LiteLLM após falhas repetidas no LocalAI | Corrija backend/HF; `docker compose restart images gateway` |
+| **CUDA OOM** ao carregar FLUX | `f16: false` carrega em float32 (estoura 24GB) | Confirme `options: [torch_dtype:bf16]` em `config/localai/flux-dev.yaml` |
+| FLUX lento / timeout no gateway | Cold start 5–15 min; router timeout curto | `router_settings.timeout: 1200` no gateway; descarregue Ollama antes de gerar imagem |
 | `localai-gateway` **unhealthy** | Arranque lento (Postgres) ou healthcheck prematuro | `/health/liveliness` não exige auth (401 em `/health` é normal). Aguarde ou aumente `start_period` |
 | Registry **401** | Master key em vez de virtual key | Use `sk-...` (virtual key) em `Authorization: Bearer` |
 | Registry não responde em `:4010` | Perfil core sem build do registry | `make build` antes de `make up` |
@@ -61,18 +63,14 @@ curl http://localhost:4010/registry/v1/health
 
 ---
 
-## Alternativa comercial (Apache-2.0)
+## VRAM (single RTX 4090)
 
-O padrão `flux-dev` é **non-commercial**. Para uso comercial, troque uma linha em
-`config/gateway/config.yaml` na rota `image-thumbs`:
+Não rode **chat/visão (Ollama)** e **imagem (FLUX)** ao mesmo tempo. Antes de `image-thumbs`:
 
-```yaml
-      # model: openai/flux-dev
-      model: openai/flux-schnell
+```bash
+docker exec localai-ollama ollama ps          # ver modelos carregados
+docker exec localai-ollama ollama stop <nome> # descarregar se necessário
 ```
-
-Aceite também os termos em [FLUX.1-schnell](https://huggingface.co/black-forest-labs/FLUX.1-schnell)
-e reinicie o gateway: `docker compose restart gateway`.
 
 Ver também [adding-a-model.md](adding-a-model.md).
 

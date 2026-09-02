@@ -14,7 +14,6 @@ params:
 vram_estimate: "~cabe no 24GB (12B, low_vram) — modelo de imagem PADRÃO"
 license: "FLUX.1-dev License (NON-COMMERCIAL). Repo HF é gated: requer HUGGING_FACE_HUB_TOKEN."
 notes: >
-  PADRÃO do projeto para image-thumbs. Melhor qualidade que flux-schnell (distilado).
-  Licença NON-COMMERCIAL — não usar em produto pago. Alternativas comerciais:
-  image-flux-schnell.yaml (Apache-2.0, mais rápido) ou image-qwen.yaml.
+  melhor qualidade que alternativas distiladas. Licença NON-COMMERCIAL.
+  Licença NON-COMMERCIAL — não usar em produto pago.
 enabled: true

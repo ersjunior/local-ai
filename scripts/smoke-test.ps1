@@ -30,9 +30,9 @@ New-Item -ItemType Directory -Path $Tmp -Force | Out-Null
 
 function Invoke-CurlJson ($url, $bodyFile, $maxTime, $useAuth = $true) {
   if ($useAuth) {
-    curl.exe --max-time $maxTime -fsS -X POST $url -H $Auth -H $Json --data "@$bodyFile" -o $null 2>$null
+    curl.exe --max-time $maxTime -fsS -X POST $url -H $Auth -H $Json --data "@$bodyFile" -o NUL 2>$null
   } else {
-    curl.exe --max-time $maxTime -fsS -X POST $url -H $Json --data "@$bodyFile" -o $null 2>$null
+    curl.exe --max-time $maxTime -fsS -X POST $url -H $Json --data "@$bodyFile" -o NUL 2>$null
   }
   return ($LASTEXITCODE -eq 0)
 }
@@ -44,7 +44,7 @@ try {
   if (Invoke-CurlJson "$Base/chat/completions" $chatFile $CurlMaxTimeChat) {
     Pass 'chat-cuts'
   } else {
-    Fail "chat-cuts (timeout ${CurlMaxTimeChat}s — cold start Ollama pode demorar)"
+    Fail "chat-cuts (timeout ${CurlMaxTimeChat}s - cold start Ollama pode demorar)"
   }
 
   Write-Host '== vision-default (image_url) =='
@@ -63,11 +63,11 @@ try {
     docker run --rm -v "${tmpUnix}:/out" jrottenberg/ffmpeg -f lavfi -i "sine=frequency=440:duration=1" -ar 16000 -ac 1 /out/tone.wav -y 2>$null | Out-Null
   }
   if (Test-Path $wav) {
-    curl.exe --max-time 120 -fsS -X POST "$Base/audio/transcriptions" -H $Auth -F 'model=whisper' -F "file=@$wav" -F 'response_format=verbose_json' -o $null 2>$null
+    curl.exe --max-time 120 -fsS -X POST "$Base/audio/transcriptions" -H $Auth -F 'model=whisper' -F "file=@$wav" -F 'response_format=verbose_json' -o NUL 2>$null
     if ($LASTEXITCODE -eq 0) {
       Pass 'whisper (via gateway)'
     } else {
-      curl.exe --max-time 120 -fsS -X POST "$WhisperDirect/v1/audio/transcriptions" -H "Authorization: Bearer $WhisperKey" -F 'model=large-v3' -F "file=@$wav" -F 'response_format=verbose_json' -o $null 2>$null
+      curl.exe --max-time 120 -fsS -X POST "$WhisperDirect/v1/audio/transcriptions" -H "Authorization: Bearer $WhisperKey" -F 'model=large-v3' -F "file=@$wav" -F 'response_format=verbose_json' -o NUL 2>$null
       if ($LASTEXITCODE -eq 0) { Pass "whisper (rota direta $WhisperDirect)" } else { Fail 'whisper' }
     }
   } else {

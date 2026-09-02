@@ -13,7 +13,7 @@
 #   - config/models/  = CATÁLOGO (documentação). Montado em /catalog:ro. NÃO é
 #     lido pelo LocalAI como modelo — serve só de fonte de verdade/docs.
 #   - config/localai/ = DEFINIÇÃO REAL servida pelo LocalAI. Montado em /models
-#     (leitura/escrita). Contém os .yaml (flux-dev, flux-schnell, qwen-image) que o
+#     (leitura/escrita). Contém os .yaml (flux-dev) que o LocalAI carrega de fato;
 #     LocalAI carrega de fato; os PESOS baixados também caem aqui (ignorados
 #     pelo git — ver .gitignore).
 #
@@ -37,11 +37,16 @@ services:
     environment:
       MODELS_PATH: "/models"
       DEBUG: "${LOCALAI_DEBUG:-false}"
-      # Instala automaticamente o backend diffusers para CUDA 12 (OCI em /backends).
+      # Respeita f16/low_vram do YAML do modelo (evita auto-tuning sobrescrever).
+      LOCALAI_DISABLE_HARDWARE_DEFAULTS: "true"
       LOCALAI_EXTERNAL_BACKENDS: "${LOCALAI_EXTERNAL_BACKENDS:-cuda12-diffusers}"
       # Token HF para modelos gated (ex.: FLUX.1-dev, FLUX.1-schnell). Obrigatório para flux-dev.
       HF_TOKEN: "${HUGGING_FACE_HUB_TOKEN:-}"
       HUGGING_FACE_HUB_TOKEN: "${HUGGING_FACE_HUB_TOKEN:-}"
+      # Cache HF no volume montado (pesos FLUX persistem entre recreates).
+      HF_HOME: "/models"
+      # Evita manter LLM de imagem + outros backends em VRAM ao mesmo tempo.
+      LOCALAI_MAX_ACTIVE_BACKENDS: "1"
     volumes:
       - ../../config/localai:/models
       - ../../config/models:/catalog:ro

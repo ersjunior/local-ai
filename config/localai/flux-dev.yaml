@@ -12,12 +12,17 @@
 name: flux-dev
 backend: diffusers
 
-f16: true
+# f16: true força variant=fp16 no HF — FLUX.1-dev não publica esse variant.
+# Use options torch_dtype:bf16 em vez de f16 para caber no 24GB da RTX 4090.
+f16: false
 cuda: true
 # Reduz o uso de VRAM (offload) — útil no orçamento single-4090.
 low_vram: true
 
 step: 28
+
+options:
+  - torch_dtype:bf16
 
 parameters:
   model: black-forest-labs/FLUX.1-dev

@@ -306,12 +306,9 @@ VIRTUAL_KEY=sk-... make registry-examples
 | Nome lógico      | Backend | Modelo real          | Licença            | Comercial |
 |------------------|---------|----------------------|--------------------|-----------|
 | `chat-cuts`      | ollama  | qwen3:32b            | Qwen (restrições)  | Sim*      |
-| `chat-gpt-oss`   | ollama  | gpt-oss:20b          | Apache-2.0         | Sim       |
-| `vision-default` | ollama  | qwen3-vl:7b          | Qwen (restrições)  | Sim*      |
+| `vision-default` | ollama  | qwen3-vl:8b          | Qwen (restrições)  | Sim*      |
 | `whisper`        | whisper | large-v3             | MIT                | Sim       |
-| `image-thumbs`   | localai | **flux-dev** (padrão)     | FLUX.1-dev (non-commercial) | **Não** |
-| `image-thumbs`   | localai | flux-schnell (alternativa)| Apache-2.0    | Sim       |
-| `image-thumbs`   | localai | qwen-image (alternativa)  | Qwen-Image    | Sim*      |
+| `image-thumbs`   | localai | **flux-dev** (padrão)| FLUX.1-dev (non-commercial) | **Não** |
 
 \* verificar as restrições da licença Qwen.
 
@@ -321,9 +318,7 @@ O padrão de `image-thumbs` é **flux-dev** (`black-forest-labs/FLUX.1-dev`, 12B
 melhor qualidade que o schnell distilado e cabe no 24 GB do RTX 4090 com
 `low_vram` (28 passos, cfg 3.5).
 
-> **Licença NON-COMMERCIAL.** Não use em produto pago. Para uso comercial,
-> troque para **flux-schnell** (Apache-2.0, 4 passos) — ver
-> [docs/adding-a-model.md](docs/adding-a-model.md).
+> **Licença NON-COMMERCIAL.** Não use em produto pago.
 
 > **FLUX.1-dev é gated no HuggingFace.** Antes do primeiro `up` do perfil
 > `image`: aceite os termos em

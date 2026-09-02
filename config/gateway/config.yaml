@@ -35,16 +35,6 @@ model_list:
       metadata:
         catalog: chat-qwen3-32b.yaml
 
-  # Alternativa direta ao modelo base (sem alias), útil p/ debug.
-  - model_name: chat-gpt-oss
-    litellm_params:
-      model: ollama_chat/gpt-oss:20b
-      api_base: http://ollama:11434
-    model_info:
-      mode: chat
-      metadata:
-        catalog: chat-gpt-oss-20b.yaml
-
   # ---- Visão (VLM) via Ollama ---------------------------------------------
   - model_name: vision-default
     litellm_params:
@@ -72,9 +62,7 @@ model_list:
   # LocalAI é OpenAI-compatível em /v1/images/generations.
   - model_name: image-thumbs
     litellm_params:
-      model: openai/flux-dev        # PADRÃO: melhor qualidade (FLUX.1-dev, non-commercial)
-      # model: openai/flux-schnell  # alternativa: mais rápido, Apache-2.0 comercial
-      # model: openai/qwen-image    # alternativa: melhor texto na imagem, ~20B (pesado no 4090)
+      model: openai/flux-dev        # PADRÃO: FLUX.1-dev (non-commercial)
       api_base: http://images:8080/v1
       api_key: "dummy"
     model_info:
@@ -106,7 +94,8 @@ router_settings:
   # Concurrency global: quantas requisições pesadas em paralelo no máximo.
   # Ajuda a evitar OOM de VRAM quando várias etapas chegam juntas.
   num_retries: 1
-  timeout: 600
+  # FLUX cold start + geração pode passar de 10 min na 1ª carga (4090).
+  timeout: 1200
 
 # --------------------------------------------------------------------------
 # COMO CRIAR VIRTUAL KEYS POR PROJETO
